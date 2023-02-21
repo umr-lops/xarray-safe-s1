@@ -1,0 +1,9 @@
+name: xarray-safe-rcm-tests
+channels:
+- conda-forge
+dependencies:
+- python=3.10
+- ipython
+- pre-commit
+- pytest
+- pytest-reportlog
