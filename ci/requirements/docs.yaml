@@ -1,8 +1,9 @@
 name: xarray-safe-rcm-docs
 channels:
-- conda-forge
+  - conda-forge
 dependencies:
-- python=3.10
-- sphinx>=4
-- sphinx-book-theme
-- ipython
+  - python=3.10
+  - sphinx>=4
+  - sphinx-book-theme
+  - ipython
+  - myst-parser
