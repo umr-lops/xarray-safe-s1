@@ -2,7 +2,13 @@
 name = "xarray-safe-rcm"
 requires-python = ">= 3.10"
 license = {text = "MIT"}
-dependencies = []
+dependencies = [
+    "toolz",
+    "numpy",
+    "xarray",
+    "xarray-datatree",
+    "xmlschema",
+]
 dynamic = ["version"]
 
 [build-system]
