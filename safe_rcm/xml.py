@@ -1,4 +1,8 @@
+import toolz
 import xmlschema
+from lxml import etree
+
+from . import fs_utils
 
 
 def open_schema(fs, root, name, *, glob="*.xsd"):
@@ -26,3 +30,23 @@ def open_schema(fs, root, name, *, glob="*.xsd"):
     sources = [fs.open(u) for u in urls]
 
     return xmlschema.XMLSchema(sources)
+
+
+def read_xml(fs, url):
+    tree = etree.fromstring(fs.cat(url))
+
+    namespaces = toolz.dicttoolz.keymap(
+        lambda x: x if x is not None else "rcm", tree.nsmap
+    )
+    schema_location = tree.xpath("./@xsi:schemaLocation", namespaces=namespaces)[0]
+    _, schema_path = schema_location.split(" ")
+
+    root = fs_utils.dirname(url)
+    schema_url = fs_utils.join_path(root, schema_path)
+    schema_root, schema_name = fs_utils.split(schema_url)
+
+    schema = open_schema(fs, schema_root, schema_name)
+
+    decoded = schema.decode(tree)
+
+    return decoded
