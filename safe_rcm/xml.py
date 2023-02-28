@@ -41,8 +41,7 @@ def read_xml(fs, url):
     schema_location = tree.xpath("./@xsi:schemaLocation", namespaces=namespaces)[0]
     _, schema_path = schema_location.split(" ")
 
-    root = fs_utils.dirname(url)
-    schema_url = fs_utils.join_path(root, schema_path)
+    schema_url = fs_utils.urljoin(url, schema_path)
     schema_root, schema_name = fs_utils.split(schema_url)
 
     schema = open_schema(fs, schema_root, schema_name)
