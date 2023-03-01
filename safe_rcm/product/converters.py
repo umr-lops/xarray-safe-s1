@@ -1,8 +1,7 @@
-import datatree
 import toolz
 import xarray as xr
 
-from . import utils
+from . import predicates, utils
 
 
 def determine_indexes(columns, hint):
@@ -52,14 +51,14 @@ def convert_table(table, *, namespaces={}, index_hint="first", dtypes={}):
     )
 
 
-def metadata_filter(item, ignore):
+def metadata_filter(item, ignore=()):
     """filter metadata items
 
     Metadata items are either attributes (the name starts with an '@'), or they are scalars.
     """
     k, v = item
 
-    return (k.startswith("@") or utils.is_scalar(v)) and k not in ignore
+    return (k.startswith("@") or predicates.is_scalar(v)) and k not in ignore
 
 
 def extract_metadata(
@@ -78,4 +77,4 @@ def extract_metadata(
     collapsed = dict(toolz.itertoolz.concat(v.items() for v in to_collapse.values()))
 
     attrs = metadata | collapsed
-    return datatree.DataTree(xr.Dataset(attrs=attrs))
+    return xr.Dataset(attrs=attrs)  # return dataset to avoid bug in datatree

@@ -1,10 +1,6 @@
 import toolz
 
 
-def is_scalar(x):
-    return not toolz.itertoolz.isiterable(x) or isinstance(x, (str, bytes))
-
-
 def split_marked(mapping, marker="@"):
     groups = toolz.itertoolz.groupby(
         lambda item: item[0].startswith(marker), mapping.items()
