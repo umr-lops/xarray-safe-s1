@@ -9,10 +9,23 @@ from .dicttoolz import query
 
 
 @curry
+def attach_path(obj, path):
+    if not hasattr(obj, "encoding"):
+        raise ValueError(
+            "cannot attach source path: `obj` does not have a `encoding` attribute."
+        )
+
+    new = obj.copy()
+    new.encoding["xpath"] = path
+
+    return new
+
+
+@curry
 def execute(mapping, f, path):
     subset = query(path, mapping)
 
-    return f(subset)
+    return compose_left(f, attach_path(path=path))(subset)
 
 
 @curry
@@ -34,11 +47,11 @@ def read_product(fs, product_url):
             "path": "/imageReferenceAttributes",
             "f": converters.extract_metadata,
         },
-        "/geographicInformation/ellipsoidParameters": {
+        "/imageReferenceAttributes/geographicInformation/ellipsoidParameters": {
             "path": "/imageReferenceAttributes/geographicInformation/ellipsoidParameters",
             "f": curry(transformers.extract_dataset)(dims="params"),
         },
-        "/geographicInformation/geolocationGrid": {
+        "/imageReferenceAttributes/geographicInformation/geolocationGrid": {
             "path": "/imageReferenceAttributes/geographicInformation/geolocationGrid/imageTiePoint",
             "f": compose_left(
                 curry(transformers.extract_nested_datatree)(dims="tie_points"),
