@@ -60,6 +60,10 @@ def read_product(fs, product_url):
                 lambda ds: ds.unstack("tie_points"),
             ),
         },
+        "/imageReferenceAttributes/geographicInformation/rationalFunctions": {
+            "path": "/imageReferenceAttributes/geographicInformation/rationalFunctions",
+            "f": curry(transformers.extract_dataset)(dims="coefficients"),
+        },
     }
 
     converted = toolz.dicttoolz.valmap(

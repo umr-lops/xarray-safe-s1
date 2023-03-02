@@ -7,6 +7,9 @@ from .predicates import is_array, is_scalar
 
 
 def extract_variable(obj, dims=()):
+    if is_array(obj):
+        return xr.Variable(dims, obj)
+
     attributes, data = keysplit(lambda k: k.startswith("@"), obj)
     if list(data) != ["$"]:
         raise ValueError("not a variable")
