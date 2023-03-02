@@ -5,14 +5,23 @@ def is_scalar(x):
     return not toolz.itertoolz.isiterable(x) or isinstance(x, (str, bytes))
 
 
-def is_complex(obj):
-    if not isinstance(obj, list) or len(obj) != 2:
+def is_composite_value(obj):
+    if not isinstance(obj, list) or len(obj) not in [1, 2]:
         return False
 
     if any(list(el) != ["@dataStream", "$"] for el in obj):
         return False
 
-    return [el["@dataStream"].lower() for el in obj] == ["real", "imaginary"]
+    data_stream_values = [el["@dataStream"].lower() for el in obj]
+    return data_stream_values in (["real", "imaginary"], ["magnitude"])
+
+
+def is_complex(obj):
+    return is_composite_value(obj) and len(obj) == 2
+
+
+def is_magnitude(obj):
+    return is_composite_value(obj) and len(obj) == 1
 
 
 def is_array(obj):

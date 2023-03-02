@@ -47,6 +47,10 @@ def read_product(fs, product_url):
             "path": "/imageReferenceAttributes",
             "f": converters.extract_metadata,
         },
+        "/imageReferenceAttributes/rasterAttributes": {
+            "path": "/imageReferenceAttributes/rasterAttributes",
+            "f": transformers.extract_dataset,
+        },
         "/imageReferenceAttributes/geographicInformation/ellipsoidParameters": {
             "path": "/imageReferenceAttributes/geographicInformation/ellipsoidParameters",
             "f": curry(transformers.extract_dataset)(dims="params"),

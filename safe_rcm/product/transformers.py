@@ -3,12 +3,30 @@ import toolz
 import xarray as xr
 
 from .dicttoolz import keysplit, valsplit
-from .predicates import is_array, is_scalar
+from .predicates import is_array, is_composite_value, is_scalar
+
+
+def convert_composite(value):
+    if not is_composite_value(value):
+        raise ValueError(f"not a composite: {value}")
+
+    converted = {part["@dataStream"].lower(): part["$"] for part in value}
+
+    if list(converted) == ["magnitude"]:
+        return "magnitude", converted["magnitude"]
+    else:
+        return "complex", converted["real"] + 1j * converted["imaginary"]
 
 
 def extract_variable(obj, dims=()):
     if is_array(obj):
         return xr.Variable(dims, obj)
+    elif is_composite_value(obj):
+        type_, value = convert_composite(obj)
+
+        if is_scalar(value):
+            dims = ()
+        return xr.Variable(dims, value, {"type": type_})
 
     attributes, data = keysplit(lambda k: k.startswith("@"), obj)
     if list(data) != ["$"]:
