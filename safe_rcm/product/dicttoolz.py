@@ -25,3 +25,7 @@ def valsplit(predicate, d):
 def keysplit(predicate, d):
     wrapper = lambda item: predicate(item[0])
     return itemsplit(wrapper, d)
+
+
+def first_values(d):
+    return toolz.itertoolz.first(d.values())

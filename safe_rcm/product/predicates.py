@@ -1,3 +1,4 @@
+import numpy as np
 import toolz
 
 
@@ -51,3 +52,44 @@ def is_array(obj):
             return True
 
     return False
+
+
+def is_scalar_variable(obj):
+    if not isinstance(obj, dict):
+        return False
+
+    if not all(is_scalar(v) for v in obj.values()):
+        return False
+
+    return all(k == "$" or k.startswith("@") for k in obj)
+
+
+def is_nested(obj):
+    """nested means: list of dict, but all dict values are scalar or 1-valued"""
+    if not isinstance(obj, list) or len(obj) == 0:
+        return False
+
+    elem = obj[0]
+    if not isinstance(elem, dict):
+        return False
+
+    if all(
+        is_scalar(v) or (is_array(v) and len(v) == 1) or is_scalar_variable(v)
+        for v in elem.values()
+    ):
+        return True
+
+    return False
+
+
+def is_nested_array(obj):
+    return is_nested(obj) and "$" in obj[0]
+
+
+def is_nested_dataset(obj):
+    return is_nested(obj) and "$" not in obj[0]
+
+
+def is_attr(column):
+    """an attribute is a index if it has multiple unique values"""
+    return np.unique(column).size == 1
