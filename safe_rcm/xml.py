@@ -1,11 +1,11 @@
+import posixpath
+
 import toolz
 import xmlschema
 from lxml import etree
 
-from . import fs_utils
 
-
-def open_schema(fs, root, name, *, glob="*.xsd"):
+def open_schema(mapper, root, name, *, glob="*.xsd"):
     """fsspec-compatible way to open remote schema files
 
     Parameters
@@ -24,27 +24,33 @@ def open_schema(fs, root, name, *, glob="*.xsd"):
     xmlschema.XMLSchema
         The opened schema object
     """
+    schema_root = mapper._key_to_str(root)
+    fs = mapper.fs
+
     urls = sorted(
-        fs.glob(f"{root}/{glob}"), key=lambda u: u.endswith(name), reverse=True
+        fs.glob(f"{schema_root}/{glob}"), key=lambda u: u.endswith(name), reverse=True
     )
     sources = [fs.open(u) for u in urls]
 
     return xmlschema.XMLSchema(sources)
 
 
-def read_xml(fs, url):
-    tree = etree.fromstring(fs.cat(url))
+def read_xml(mapper, path):
+    raw_data = mapper[path]
+    tree = etree.fromstring(raw_data)
 
     namespaces = toolz.dicttoolz.keymap(
         lambda x: x if x is not None else "rcm", tree.nsmap
     )
     schema_location = tree.xpath("./@xsi:schemaLocation", namespaces=namespaces)[0]
-    _, schema_path = schema_location.split(" ")
+    _, schema_path_ = schema_location.split(" ")
 
-    schema_url = fs_utils.urljoin(url, schema_path)
-    schema_root, schema_name = fs_utils.split(schema_url)
+    schema_path = posixpath.normpath(
+        posixpath.join(posixpath.dirname(path), schema_path_)
+    )
+    schema_root, schema_name = posixpath.split(schema_path)
 
-    schema = open_schema(fs, schema_root, schema_name)
+    schema = open_schema(mapper, schema_root, schema_name)
 
     decoded = schema.decode(tree)
 

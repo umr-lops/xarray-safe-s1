@@ -14,6 +14,8 @@ from .predicates import (
     is_scalar,
 )
 
+ignore = ("@xmlns", "@xmlns:xsi", "@xsi:schemaLocation")
+
 
 def convert_composite(value):
     if not is_composite_value(value):
@@ -25,6 +27,27 @@ def convert_composite(value):
         return "magnitude", converted["magnitude"]
     else:
         return "complex", converted["real"] + 1j * converted["imaginary"]
+
+
+def extract_metadata(
+    mapping,
+    collapse=(),
+    ignore=ignore,
+):
+    without_ignores = toolz.dicttoolz.keyfilter(lambda k: k not in ignore, mapping)
+    # extract the metadata
+    metadata_ = toolz.dicttoolz.itemfilter(
+        lambda it: it[0].startswith("@") or is_scalar(it[1]),
+        without_ignores,
+    )
+    metadata = toolz.dicttoolz.keymap(flip(str.lstrip, "@"), metadata_)
+
+    # collapse the selected items
+    to_collapse = toolz.dicttoolz.keyfilter(lambda x: x in collapse, mapping)
+    collapsed = dict(toolz.itertoolz.concat(v.items() for v in to_collapse.values()))
+
+    attrs = metadata | collapsed
+    return xr.Dataset(attrs=attrs)  # return dataset to avoid bug in datatree
 
 
 def extract_array(obj, dims):
@@ -68,13 +91,14 @@ def extract_entry(name, obj, dims=None):
     elif isinstance(obj, dict):
         return extract_variable(obj, dims=dims)
     elif is_nested_array(obj):
-        return extract_nested_array(obj).rename(name)
+        return extract_nested_array(obj).pipe(rename, name)
     else:
         raise ValueError(f"unknown datastructure:\n{obj}")
 
 
 def extract_dataset(obj, dims=None):
-    attrs, variables = valsplit(is_scalar, obj)
+    filtered = toolz.dicttoolz.keyfilter(lambda x: x not in ignore, obj)
+    attrs, variables = valsplit(is_scalar, filtered)
     if len(variables) == 1 and is_nested_dataset(first_values(variables)):
         return extract_nested_dataset(first_values(variables), dims=dims).assign_attrs(
             attrs
@@ -112,6 +136,17 @@ def unstack(obj, dim="stacked"):
     return obj.set_index({dim: stacked_coords}).unstack(dim)
 
 
+def rename(obj, name):
+    renamed = obj.rename(name)
+    if "$" not in obj.dims:
+        return renamed
+
+    if len(obj.dims) != 1:
+        raise ValueError(f"unexpected number of dimensions: {list(obj.dims)}")
+
+    return renamed.swap_dims({"$": name})
+
+
 def to_variable_tuple(name, value, dims):
     if name in dims:
         dims_ = [name]
@@ -121,7 +156,7 @@ def to_variable_tuple(name, value, dims):
     return (dims_, value)
 
 
-def extract_nested_array(obj):
+def extract_nested_array(obj, dims=None):
     columns = toolz.dicttoolz.merge_with(list, *obj)
 
     attributes, data = keysplit(flip(str.startswith, "@"), columns)
@@ -132,8 +167,10 @@ def extract_nested_array(obj):
 
     if len(indexes) == 1:
         dims = list(indexes)
-    else:
+    elif len(indexes) >= 2:
         dims = ["stacked"]
+    elif dims is None:
+        dims = ["$"]
 
     coords = toolz.dicttoolz.itemmap(
         lambda it: (it[0], to_variable_tuple(*it, dims=dims)),

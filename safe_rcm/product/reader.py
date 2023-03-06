@@ -4,7 +4,7 @@ import xarray as xr
 from toolz.functoolz import compose_left, curry
 
 from ..xml import read_xml
-from . import converters, transformers
+from . import transformers
 from .dicttoolz import query
 from .predicates import disjunction, is_nested_array, is_scalar_valued
 
@@ -29,24 +29,17 @@ def execute(mapping, f, path):
     return compose_left(f, attach_path(path=path))(subset)
 
 
-@curry
-def convert(converters, item):
-    key, value = item
-    converter = converters.get(key, lambda x: x)
-    return key, converter(value)
-
-
-def read_product(fs, product_url):
-    decoded = read_xml(fs, product_url)
+def read_product(mapper, product_path):
+    decoded = read_xml(mapper, product_path)
 
     layout = {
         "/": {
             "path": "/",
-            "f": curry(converters.extract_metadata)(collapse=["securityAttributes"]),
+            "f": curry(transformers.extract_metadata)(collapse=["securityAttributes"]),
         },
         "/sourceAttributes": {
             "path": "/sourceAttributes",
-            "f": converters.extract_metadata,
+            "f": transformers.extract_metadata,
         },
         "/sourceAttributes/radarParameters": {
             "path": "/sourceAttributes/radarParameters",
