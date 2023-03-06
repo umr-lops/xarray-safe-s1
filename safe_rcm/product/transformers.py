@@ -126,8 +126,9 @@ def extract_nested_array(obj):
 
     attributes, data = keysplit(flip(str.startswith, "@"), columns)
     renamed = toolz.dicttoolz.keymap(flip(str.lstrip, "@"), attributes)
-    preprocessed = toolz.dicttoolz.valmap(np.squeeze, renamed)
-    attrs_, indexes = valsplit(is_attr, preprocessed)
+    preprocessed_attrs = toolz.dicttoolz.valmap(np.squeeze, renamed)
+    attrs_, indexes = valsplit(is_attr, preprocessed_attrs)
+    preprocessed_data = toolz.dicttoolz.valmap(np.squeeze, data)
 
     if len(indexes) == 1:
         dims = list(indexes)
@@ -140,7 +141,7 @@ def extract_nested_array(obj):
     )
 
     arr = xr.DataArray(
-        data=data["$"],
+        data=preprocessed_data["$"],
         attrs=toolz.dicttoolz.valmap(toolz.itertoolz.first, attrs_),
         dims=dims,
         coords=coords,

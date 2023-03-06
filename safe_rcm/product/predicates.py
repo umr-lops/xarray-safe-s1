@@ -10,7 +10,7 @@ def is_composite_value(obj):
     if not isinstance(obj, list) or len(obj) not in [1, 2]:
         return False
 
-    if any(list(el) != ["@dataStream", "$"] for el in obj):
+    if any(not isinstance(el, dict) or list(el) != ["@dataStream", "$"] for el in obj):
         return False
 
     data_stream_values = [el["@dataStream"].lower() for el in obj]

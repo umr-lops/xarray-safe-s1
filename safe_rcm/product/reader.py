@@ -98,6 +98,14 @@ def read_product(fs, product_url):
             "path": "/imageReferenceAttributes/geographicInformation/rationalFunctions",
             "f": curry(transformers.extract_dataset)(dims="coefficients"),
         },
+        "/sceneAttributes": {
+            "path": "/sceneAttributes/imageAttributes",
+            "f": compose_left(
+                toolz.itertoolz.first,  # GRD datasets only have 1
+                curry(toolz.dicttoolz.keyfilter)(lambda x: not x.startswith("@")),
+                transformers.extract_dataset,
+            ),
+        },
     }
 
     converted = toolz.dicttoolz.valmap(
