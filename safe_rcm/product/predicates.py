@@ -1,9 +1,18 @@
 import numpy as np
-import toolz
+from toolz.functoolz import compose, juxt
+from toolz.itertoolz import isiterable
+
+
+def disjunction(*predicates):
+    return compose(any, juxt(predicates))
+
+
+def conjunction(*predicates):
+    return compose(all, juxt(predicates))
 
 
 def is_scalar(x):
-    return not toolz.itertoolz.isiterable(x) or isinstance(x, (str, bytes))
+    return not isiterable(x) or isinstance(x, (str, bytes))
 
 
 def is_composite_value(obj):
@@ -64,6 +73,11 @@ def is_scalar_variable(obj):
     return all(k == "$" or k.startswith("@") for k in obj)
 
 
+is_scalar_valued = disjunction(
+    is_scalar, lambda x: is_array(x) and len(x) == 1, is_scalar_variable
+)
+
+
 def is_nested(obj):
     """nested means: list of dict, but all dict values are scalar or 1-valued"""
     if not isinstance(obj, list) or len(obj) == 0:
@@ -73,10 +87,7 @@ def is_nested(obj):
     if not isinstance(elem, dict):
         return False
 
-    if all(
-        is_scalar(v) or (is_array(v) and len(v) == 1) or is_scalar_variable(v)
-        for v in elem.values()
-    ):
+    if all(map(is_scalar_valued, elem.values())):
         return True
 
     return False

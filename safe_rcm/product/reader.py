@@ -6,6 +6,7 @@ from toolz.functoolz import compose_left, curry
 from ..xml import read_xml
 from . import converters, transformers
 from .dicttoolz import query
+from .predicates import disjunction, is_nested_array, is_scalar_valued
 
 
 @curry
@@ -75,7 +76,12 @@ def read_product(fs, product_url):
         },
         "/imageReferenceAttributes": {
             "path": "/imageReferenceAttributes",
-            "f": converters.extract_metadata,
+            "f": compose_left(
+                curry(toolz.dicttoolz.valfilter)(
+                    disjunction(is_scalar_valued, is_nested_array)
+                ),
+                transformers.extract_dataset,
+            ),
         },
         "/imageReferenceAttributes/rasterAttributes": {
             "path": "/imageReferenceAttributes/rasterAttributes",
