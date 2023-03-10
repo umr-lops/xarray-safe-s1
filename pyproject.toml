@@ -7,7 +7,9 @@ dependencies = [
     "numpy",
     "xarray",
     "xarray-datatree",
+    "lxml",
     "xmlschema",
+    "rioxarray",
 ]
 dynamic = ["version"]
 

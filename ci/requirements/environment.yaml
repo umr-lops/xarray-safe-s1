@@ -28,5 +28,6 @@ dependencies:
   - numpy
   - pandas
   # processing
-  - more-itertools
+  - toolz
   - lxml
+  - xmlschema
