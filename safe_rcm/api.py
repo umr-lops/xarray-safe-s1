@@ -7,6 +7,7 @@ import xarray as xr
 from toolz.dicttoolz import valmap
 from toolz.functoolz import compose_left, curry, juxt
 
+from .calibrations import read_noise_levels
 from .product.reader import read_product
 from .product.transformers import extract_dataset
 from .xml import read_xml
@@ -44,9 +45,9 @@ def open_rcm(url, *, backend_kwargs=None, **dataset_kwargs):
             "path": "/imageReferenceAttributes",
             "f": compose_left(
                 lambda obj: obj.attrs["incidenceAngleFileName"],
-                lambda p: posixpath.join(calibration_root, p),
-                curry(read_xml)(mapper),
-                curry(extract_dataset)(dims="coefficients"),
+                curry(posixpath.join, calibration_root),
+                curry(read_xml, mapper),
+                curry(extract_dataset, dims="coefficients"),
             ),
         },
         "/lookupTables": {
@@ -57,10 +58,10 @@ def open_rcm(url, *, backend_kwargs=None, **dataset_kwargs):
                 juxt(
                     compose_left(
                         lambda obj: obj.to_series().to_dict(),
-                        curry(valmap)(lambda p: posixpath.join(calibration_root, p)),
-                        curry(valmap)(curry(read_xml)(mapper)),
-                        curry(valmap)(curry(extract_dataset)(dims="coefficients")),
-                        curry(valmap)(lambda ds: ds["gains"].assign_attrs(ds.attrs)),
+                        curry(valmap, curry(posixpath.join, calibration_root)),
+                        curry(valmap, curry(read_xml)(mapper)),
+                        curry(valmap, curry(extract_dataset, dims="coefficients")),
+                        curry(valmap, lambda ds: ds["gains"].assign_attrs(ds.attrs)),
                         lambda d: xr.concat(list(d.values()), dim="stacked"),
                     ),
                     lambda obj: obj.coords,
@@ -71,6 +72,10 @@ def open_rcm(url, *, backend_kwargs=None, **dataset_kwargs):
                 lambda arr: arr.rename("lookup_tables"),
             ),
         },
+        "/noiseLevels": {
+            "path": "/imageReferenceAttributes/noiseLevelFileName",
+            "f": curry(read_noise_levels, mapper, calibration_root),
+        },
     }
     calibration = valmap(
         lambda x: execute(**x)(tree),
@@ -80,7 +85,7 @@ def open_rcm(url, *, backend_kwargs=None, **dataset_kwargs):
     imagery_paths = tree["/sceneAttributes/ipdf"].to_series().to_dict()
     resolved = valmap(
         compose_left(
-            lambda p: posixpath.join("metadata", p),
+            curry(posixpath.join, "metadata"),
             posixpath.normpath,
         ),
         imagery_paths,
@@ -92,7 +97,7 @@ def open_rcm(url, *, backend_kwargs=None, **dataset_kwargs):
     imagery_dss = valmap(
         compose_left(
             curry(mapper.fs.open),
-            curry(xr.open_dataset)(engine="rasterio", chunks={}),
+            curry(xr.open_dataset, engine="rasterio", **dataset_kwargs),
         ),
         imagery_urls,
     )
