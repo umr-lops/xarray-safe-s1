@@ -6,6 +6,7 @@ import xarray as xr
 import geopandas as gpd
 import datatree
 import pandas as pd
+import warnings
 
 
 class Sentinel1Reader:
@@ -100,21 +101,33 @@ class Sentinel1Reader:
             self.dt = datatree.DataTree.from_dict(self._dict)
 
     @property
+    def datasets_names(self):
+        """
+        Alias to `Sentinel1Reader._datasets_names`
+
+        Returns
+        -------
+
+        """
+        return self._datasets_names
+
+    @property
     def datatree(self):
         """
         Return data of the reader as datatree. Can't open data from a multiple dataset (must select a single one with
-        displayed in `self.subdatasets`).
-        Alias to `self.dt`.
+        displayed in `Sentinel1Reader.datasets_names`). So if multiple dataset, returns None.
+        Alias to `Sentinel1Reader.dt`.
 
         Returns
         -------
         datatree.Datatree
             Contains data from the reader
         """
-        if self.multidataset:
-            raise TypeError("Please select an only dataset from `self.subdatasets`")
-        else:
+        """if self.multidataset:
+            raise warnings.warn("Please select an only dataset from `Sentinel1Reader.datasets_names`")
             return self.dt
+        else:"""
+        return self.dt
 
     @property
     def geoloc(self):
@@ -166,6 +179,27 @@ class Sentinel1Reader:
         gdf_orbit.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'orbit',
                                                                       describe=True)
         return gdf_orbit
+
+    @property
+    def denoised(self):
+        """dict with pol as key, and bool as values (True is DN is predenoised at L1 level)"""
+        if self.multidataset:
+            return None  # not defined for multidataset
+        else:
+            return dict(
+                [self.xml_parser.get_compound_var(f, 'denoised') for f in self.files['annotation']])
+
+    @property
+    def time_range(self):
+        """
+        Get time range
+
+        Returns
+        -------
+
+        """
+        if not self.multidataset:
+            return self.xml_parser.get_var(self.files['annotation'].iloc[0], 'annotation.line_time_range')
 
     @property
     def image(self) -> xr.Dataset:
@@ -225,7 +259,7 @@ class Sentinel1Reader:
     @property
     def multidataset(self):
         """
-        Alias to `self._multidataset`
+        Alias to `Sentinel1Reader._multidataset`
         """
         return self._multidataset
 
