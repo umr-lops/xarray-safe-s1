@@ -5,9 +5,10 @@ from .xml_parser import XmlParser
 import xarray as xr
 import geopandas as gpd
 import datatree
+import pandas as pd
 
 
-class ReadMetadata:
+class Sentinel1Reader:
 
     def __init__(self, name, backend_kwargs=None):
         if not isinstance(name, (str, os.PathLike)):
@@ -45,7 +46,7 @@ class ReadMetadata:
         self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes')
 
         self._safe_files = None
-        self.multidataset = False
+        self._multidataset = False
         """True if multi dataset"""
         self.subdatasets = gpd.GeoDataFrame(geometry=[], index=[])
         """Subdatasets as GeodataFrame (empty if single dataset)"""
@@ -54,11 +55,18 @@ class ReadMetadata:
         if self.name.endswith(':') and len(self._datasets_names) == 1:
             self.name = self._datasets_names[0]
         self.dsid = self.name.split(':')[-1]
-
         """Dataset identifier (like 'WV_001', 'IW1', 'IW'), or empty string for multidataset"""
+
+        try:
+            self.product = os.path.basename(self.path).split('_')[2]
+        except:
+            print("path: %s" % self.path)
+            self.product = "XXX"
+        """Product type, like 'GRDH', 'SLC', etc .."""
+
         # submeta is a list of submeta objects if multidataset and TOPS
         # this list will remain empty for _WV__SLC because it will be time-consuming to process them
-        self._submeta = []
+        # self._submeta = []
         if self.short_name.endswith(':'):
             self.short_name = self.short_name + self.dsid
         if self.files.empty:
@@ -66,21 +74,47 @@ class ReadMetadata:
                 self.subdatasets = gpd.GeoDataFrame(geometry=self.manifest_attrs['footprints'], index=self._datasets_names)
             except ValueError:
                 # not as many footprints than subdatasets count. (probably TOPS product)
-                self._submeta = [ReadMetadata(subds) for subds in self._datasets_names]
+                #self._submeta = [ReadMetadata(subds) for subds in self._datasets_names]
                 # sub_footprints = [submeta.footprint for submeta in self._submeta]
-                #self.subdatasets = gpd.GeoDataFrame(  # geometry=sub_footprints,
-                #    index=self._datasets_names)
-            self.multidataset = True
+                self.subdatasets = gpd.GeoDataFrame(  # geometry=sub_footprints,
+                    index=self._datasets_names)
+            self._multidataset = True
 
         self.dt = None
-
         self._dict = {
             'geolocationGrid': None,
         }
-        # self.manifest = os.path.join(self.path, 'manifest.safe')
+        if not self.multidataset:
 
+            self._dict = {
+                'geolocationGrid': self.geoloc,
+                'orbit': self.orbit,
+                'image': self.image,
+                'azimuth_fmrate': self.azimuth_fmrate,
+                'doppler_estimate': self.doppler_estimate,
+                'bursts': self.bursts,
+                'calibration_luts': self.get_calibration_luts,
+                'noise_azimuth_raw': self.get_noise_azi_raw,
+                'noise_range_raw': self.get_noise_range_raw,
+            }
+            self.dt = datatree.DataTree.from_dict(self._dict)
 
-        self._safe_path = None
+    @property
+    def datatree(self):
+        """
+        Return data of the reader as datatree. Can't open data from a multiple dataset (must select a single one with
+        displayed in `self.subdatasets`).
+        Alias to `self.dt`.
+
+        Returns
+        -------
+        datatree.Datatree
+            Contains data from the reader
+        """
+        if self.multidataset:
+            raise TypeError("Please select an only dataset from `self.subdatasets`")
+        else:
+            return self.dt
 
     @property
     def geoloc(self):
@@ -103,7 +137,7 @@ class ReadMetadata:
                                                                            describe=True)
                 da_var_list.append(da_var)
 
-            self._geoloc = xr.merge(da_var_list)
+            return xr.merge(da_var_list)
 
     @property
     def orbit(self):
@@ -159,7 +193,7 @@ class ReadMetadata:
         return fmrates
 
     @property
-    def _doppler_estimate(self):
+    def doppler_estimate(self):
         """
         xarray.Dataset
             with Doppler Centroid Estimates from annotations such as geo_polynom,data_polynom or frequency
@@ -173,7 +207,7 @@ class ReadMetadata:
         return dce
 
     @property
-    def _bursts(self):
+    def bursts(self):
         if self.xml_parser.get_var(self.files['annotation'].iloc[0], 'annotation.number_of_bursts') > 0:
             bursts = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts')
             for vv in bursts:
@@ -187,6 +221,13 @@ class ReadMetadata:
             bursts.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts_grd',
                                                                        describe=True)
             return bursts
+
+    @property
+    def multidataset(self):
+        """
+        Alias to `self._multidataset`
+        """
+        return self._multidataset
 
     def get_annotation_definitions(self):
         """
@@ -210,6 +251,72 @@ class ReadMetadata:
                 final_dict[mykey] = myvalue
 
         return final_dict
+
+    @property
+    def get_calibration_luts(self):
+        """
+        get original (ie not interpolation) xr.Dataset sigma0 and gamma0 Look Up Tables to apply calibration
+        """
+        #sigma0_lut = self.xml_parser.get_var(self.files['calibration'].iloc[0], 'calibration.sigma0_lut',describe=True)
+        pols = []
+        tmp = []
+        for pol_code, xml_file in self.files['calibration'].items():
+            luts_ds = self.xml_parser.get_compound_var(xml_file,'luts_raw')
+            pol = os.path.basename(xml_file).split('-')[4].upper()
+            pols.append(pol)
+            tmp.append(luts_ds)
+        ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        # ds.attrs = {'description':
+        #                                 'original (ie not interpolation) xr.Dataset sigma0 and gamma0 Look Up Tables'}
+        return ds
+
+    @property
+    def get_noise_azi_raw(self):
+        tmp = []
+        pols = []
+        for pol_code, xml_file in self.files['noise'].items():
+            #pol = self.files['polarization'].cat.categories[pol_code-1]
+            pol = os.path.basename(xml_file).split('-')[4].upper()
+            pols.append(pol)
+            if self.product == 'SLC':
+                noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file,'noise_lut_azi_raw_slc')
+            else:
+                noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_grd')
+            for vari in noise_lut_azi_raw_ds:
+                if 'noise_lut' in vari:
+                    varitmp = 'noiseLut'
+                    hihi = self.xml_parser.get_var(self.files['noise'].iloc[0], 'noise.azi.%s' % varitmp,
+                                                   describe=True)
+                elif vari == 'noise_lut' and self.product=='WV': #WV case
+                    hihi = 'dummy variable, noise is not defined in azimuth for WV acquisitions'
+                else:
+                    varitmp = vari
+                    hihi = self.xml_parser.get_var(self.files['noise'].iloc[0], 'noise.azi.%s' % varitmp,
+                                                   describe=True)
+
+                noise_lut_azi_raw_ds[vari].attrs['description'] = hihi
+            tmp.append(noise_lut_azi_raw_ds)
+        ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        return ds
+
+    @property
+    def get_noise_range_raw(self):
+        tmp = []
+        pols = []
+        for pol_code, xml_file in self.files['noise'].items():
+            #pol = self.files['polarization'].cat.categories[pol_code - 1]
+            pol = os.path.basename(xml_file).split('-')[4].upper()
+            pols.append(pol)
+            noise_lut_range_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_range_raw')
+            for vari in noise_lut_range_raw_ds:
+                if 'noise_lut' in vari:
+                    varitmp = 'noiseLut'
+                hihi = self.xml_parser.get_var(self.files['noise'].iloc[0], 'noise.range.%s' % varitmp,
+                                               describe=True)
+                noise_lut_range_raw_ds[vari].attrs['description'] = hihi
+            tmp.append(noise_lut_range_raw_ds)
+        ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        return ds
 
     @property
     def safe_files(self):
@@ -264,3 +371,10 @@ class ReadMetadata:
         xsar.Sentinel1Meta.safe_files
         """
         return self.safe_files[self.safe_files['dsid'] == self.name]
+
+    def __repr__(self):
+        if self.multidataset:
+            typee = "multi (%d)" % len(self.subdatasets)
+        else:
+            typee = "single"
+        return "<Sentinel1Reader %s object>" % typee
