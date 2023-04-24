@@ -1,7 +1,7 @@
 # -- Project information -----------------------------------------------------
 import datetime as dt
 
-project = "xarray-safe-rcm"
+project = "xarray-safe-s1"
 author = f"{project} developers"
 initial_year = "2023"
 year = dt.datetime.now().year
@@ -24,8 +24,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/umr-lops/xarray-safe-rcm/issues/%s", "GH%s"),
-    "pull": ("https://github.com/umr-lops/xarray-safe-rcm/pull/%s", "PR%s"),
+    "issue": ("https://github.com/umr-lops/xarray-safe-s1/issues/%s", "GH%s"),
+    "pull": ("https://github.com/umr-lops/xarray-safe-s1/pull/%s", "PR%s"),
 }
 
 # Add any paths that contain templates here, relative to this directory.

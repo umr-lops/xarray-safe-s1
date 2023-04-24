@@ -1,4 +1,4 @@
-name: xarray-safe-rcm-tests
+name: xarray-safe-s1-tests
 channels:
   - conda-forge
 dependencies:

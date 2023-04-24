@@ -1,4 +1,4 @@
-name: xarray-safe-rcm-docs
+name: xarray-safe-s1-docs
 channels:
   - conda-forge
 dependencies:
