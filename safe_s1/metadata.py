@@ -105,6 +105,89 @@ class ReadMetadata:
 
             self._geoloc = xr.merge(da_var_list)
 
+    @property
+    def orbit(self):
+        """
+        orbit, as a geopandas.GeoDataFrame, with columns:
+          - 'velocity' : shapely.geometry.Point with velocity in x, y, z direction
+          - 'geometry' : shapely.geometry.Point with position in x, y, z direction
+
+        crs is set to 'geocentric'
+
+        attrs keys:
+          - 'orbit_pass': 'Ascending' or 'Descending'
+          - 'platform_heading': in degrees, relative to north
+
+        Notes
+        -----
+        orbit is longer than the SAFE, because it belongs to all datatakes, not only this slice
+
+        """
+        if self.multidataset:
+            return None  # not defined for multidataset
+        gdf_orbit = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'orbit')
+        for vv in gdf_orbit:
+            if vv in self.xsd_definitions:
+                gdf_orbit[vv].attrs['definition'] = self.xsd_definitions[vv]
+        gdf_orbit.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'orbit',
+                                                                      describe=True)
+        return gdf_orbit
+
+    @property
+    def image(self) -> xr.Dataset:
+        if self.multidataset:
+            return None
+        img_dict = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'image')
+        img_dict['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'image', describe=True)
+        for vv in img_dict:
+            if vv in self.xsd_definitions:
+                img_dict[vv].attrs['definition'] = self.xsd_definitions[vv]
+        return img_dict
+
+    @property
+    def azimuth_fmrate(self):
+        """
+        xarray.Dataset
+            Frequency Modulation rate annotations such as t0 (azimuth time reference) and polynomial coefficients: Azimuth FM rate = c0 + c1(tSR - t0) + c2(tSR - t0)^2
+        """
+        fmrates = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'azimuth_fmrate')
+        fmrates.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'azimuth_fmrate',
+                                                                    describe=True)
+        for vv in fmrates:
+            if vv in self.xsd_definitions:
+                fmrates[vv].attrs['definition'] = self.xsd_definitions[vv]
+        return fmrates
+
+    @property
+    def _doppler_estimate(self):
+        """
+        xarray.Dataset
+            with Doppler Centroid Estimates from annotations such as geo_polynom,data_polynom or frequency
+        """
+        dce = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'doppler_estimate')
+        for vv in dce:
+            if vv in self.xsd_definitions:
+                dce[vv].attrs['definition'] = self.xsd_definitions[vv]
+        dce.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'doppler_estimate',
+                                                                describe=True)
+        return dce
+
+    @property
+    def _bursts(self):
+        if self.xml_parser.get_var(self.files['annotation'].iloc[0], 'annotation.number_of_bursts') > 0:
+            bursts = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts')
+            for vv in bursts:
+                if vv in self.xsd_definitions:
+                    bursts[vv].attrs['definition'] = self.xsd_definitions[vv]
+            bursts.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts',
+                                                                       describe=True)
+            return bursts
+        else:
+            bursts = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts_grd')
+            bursts.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts_grd',
+                                                                       describe=True)
+            return bursts
+
     def get_annotation_definitions(self):
         """
 
@@ -154,10 +237,12 @@ class ReadMetadata:
         """
         if self._safe_files is None:
             files = self.xml_parser.get_compound_var(self.manifest, 'files')
+
+            """
             # add path
             for f in ['annotation', 'measurement', 'noise', 'calibration']:
                 files[f] = files[f].map(lambda f: os.path.join(# self.path,
-                     f))
+                     f))"""
 
             # set "polarization" as a category, so sorting dataframe on polarization
             # will return the dataframe in same order as self._safe_attributes['polarizations']
