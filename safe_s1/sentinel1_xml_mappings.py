@@ -70,7 +70,7 @@ xpath_mappings = {
     "manifest": {
         'ipf_version': (scalar_float, '//xmlData/safe:processing/safe:facility/safe:software/@version'),
         'swath_type': (scalar, '//s1sarl1:instrumentMode/s1sarl1:mode'),
-       # 'product': (scalar, '/xfdu:XFDU/informationPackageMap/xfdu:contentUnit/@textInfo'),
+        # 'product': (scalar, '/xfdu:XFDU/informationPackageMap/xfdu:contentUnit/@textInfo'),
         'polarizations': (
             ordered_category, '//s1sarl1:standAloneProductInformation/s1sarl1:transmitterReceiverPolarisation'),
         'footprints': (list_poly_from_list_string_coords, '//safe:frame/safe:footPrint/gml:coordinates'),
@@ -79,7 +79,8 @@ xpath_mappings = {
         'satellite': (scalar, '//safe:platform/safe:number'),
         'start_date': (date_converter, '//safe:acquisitionPeriod/safe:startTime'),
         'stop_date': (date_converter, '//safe:acquisitionPeriod/safe:stopTime'),
-        'aux_cal': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        'aux_cal': (scalar,
+                    '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'annotation_files': (
             normpath, '/xfdu:XFDU/dataObjectSection/*[@repID="s1Level1ProductSchema"]/byteStream/fileLocation/@href'),
         'measurement_files': (
@@ -90,14 +91,25 @@ xpath_mappings = {
         'calibration_files': (
             normpath,
             '/xfdu:XFDU/dataObjectSection/*[@repID="s1Level1CalibrationSchema"]/byteStream/fileLocation/@href'),
-        'xsd_product_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1ProductSchema"]/metadataReference/@href'),
-        'xsd_Noise_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1NoiseSchema"]/metadataReference/@href'),
-        'xsd_RFI_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1RfiSchema"]/metadataReference/@href'),
-        'xsd_calibration_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1CalibrationSchema"]/metadataReference/@href'),
-        'xsd_objecttype_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1ObjectTypesSchema"]/metadataReference/@href'),
-        'xsd_measurement_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MeasurementSchema"]/metadataReference/@href'),
-        'xsd_level1product_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1ProductPreviewSchema"]/metadataReference/@href'),
-        'xsd_overlay_file':(normpath,'/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MapOverlaySchema"]/metadataReference/@href'),
+        'xsd_product_file': (
+            normpath, '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1ProductSchema"]/metadataReference/@href'),
+        'xsd_Noise_file': (
+            normpath, '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1NoiseSchema"]/metadataReference/@href'),
+        'xsd_RFI_file': (
+            normpath, '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1RfiSchema"]/metadataReference/@href'),
+        'xsd_calibration_file': (
+            normpath,
+            '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1CalibrationSchema"]/metadataReference/@href'),
+        'xsd_objecttype_file': (
+            normpath, '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1ObjectTypesSchema"]/metadataReference/@href'),
+        'xsd_measurement_file': (
+            normpath,
+            '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MeasurementSchema"]/metadataReference/@href'),
+        'xsd_level1product_file': (normpath,
+                                   '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1ProductPreviewSchema"]/metadataReference/@href'),
+        'xsd_overlay_file': (
+            normpath,
+            '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MapOverlaySchema"]/metadataReference/@href'),
     },
     'calibration': {
         'polarization': (scalar, '/calibration/adsHeader/polarisation'),
@@ -122,7 +134,7 @@ xpath_mappings = {
         'azi': {
             'swath': '/noise/noiseAzimuthVectorList/noiseAzimuthVector/swath',
             'line': (lambda x: [np.fromstring(str(s), dtype=int, sep=' ') for s in x],
-                       '/noise/noiseAzimuthVectorList/noiseAzimuthVector/line'),
+                     '/noise/noiseAzimuthVectorList/noiseAzimuthVector/line'),
             'line_start': (int_array, '/noise/noiseAzimuthVectorList/noiseAzimuthVector/firstAzimuthLine'),
             'line_stop': (int_array, '/noise/noiseAzimuthVectorList/noiseAzimuthVector/lastAzimuthLine'),
             'sample_start': (int_array, '/noise/noiseAzimuthVectorList/noiseAzimuthVector/firstRangeSample'),
@@ -220,10 +232,10 @@ xpath_mappings = {
             '//product/generalAnnotation/azimuthFmRateList/azimuthFmRate/azimuthFmRatePolynomial'),
 
     },
-    'xsd':{'all':(str,'/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
-           'names':(str,'/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
-           'sensingtime':(str,'/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/sensingTime')
-           }
+    'xsd': {'all': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
+            'names': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
+            'sensingtime': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/sensingTime')
+            }
 
 }
 
@@ -234,10 +246,13 @@ def signal_lut(line, sample, lut):
     lut_f = RectBivariateSpline(line, sample, lut, kx=1, ky=1)
     return lut_f
 
-def signal_lut_raw(line,sample,lut_sigma0,lut_gamma0):
+
+def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0):
     ds = xr.Dataset()
-    ds['sigma0_lut'] = xr.DataArray(lut_sigma0,dims=['line','sample'],coords={'line':line,'sample':sample},name='sigma0',attrs={'description':'look up table sigma0'})
-    ds['gamma0_lut'] = xr.DataArray(lut_gamma0,dims=['line','sample'],coords={'line':line,'sample':sample},name='gamma0',attrs={'description':'look up table gamma0'})
+    ds['sigma0_lut'] = xr.DataArray(lut_sigma0, dims=['line', 'sample'], coords={'line': line, 'sample': sample},
+                                    name='sigma0', attrs={'description': 'look up table sigma0'})
+    ds['gamma0_lut'] = xr.DataArray(lut_gamma0, dims=['line', 'sample'], coords={'line': line, 'sample': sample},
+                                    name='gamma0', attrs={'description': 'look up table gamma0'})
 
     return ds
 
@@ -356,7 +371,7 @@ def noise_lut_range_raw(lines, samples, noiseLuts):
     normalized_noise_luts = []
     normalized_samples = []
     for uu in range(len(noiseLuts)):
-        if len(noiseLuts[uu])<minimum_pts:
+        if len(noiseLuts[uu]) < minimum_pts:
             minimum_pts = len(noiseLuts[uu])
     # reduce to the smaller number of points (knowing that it is quite often that last noise value is zero )
     for uu in range(len(noiseLuts)):
@@ -364,18 +379,18 @@ def noise_lut_range_raw(lines, samples, noiseLuts):
         normalized_samples.append(samples[uu][0:minimum_pts])
     tmp_noise = np.stack(normalized_noise_luts)
     ds['noise_lut'] = xr.DataArray(tmp_noise,
-                                  coords={'line': lines, 'sample': samples[0][0:minimum_pts]},
-                                  dims=['line', 'sample'])
+                                   coords={'line': lines, 'sample': samples[0][0:minimum_pts]},
+                                   dims=['line', 'sample'])
     # ds['sample'] = xr.DataArray(np.stack(normalized_samples), coords={'lines': lines, 'sample_index': np.arange(minimum_pts)},
     #                             dims=['lines', 'sample_index'])
 
     return ds
 
 
-def noise_lut_azi_raw_grd(line_azi,line_azi_start,line_azi_stop,
-                  sample_azi_start, sample_azi_stop, noise_azi_lut, swath):
+def noise_lut_azi_raw_grd(line_azi, line_azi_start, line_azi_stop,
+                          sample_azi_start, sample_azi_stop, noise_azi_lut, swath):
     ds = xr.Dataset()
-    for ii, swathi in enumerate(swath): # with 2018 data the noise vector are not the same size -> stacking impossible
+    for ii, swathi in enumerate(swath):  # with 2018 data the noise vector are not the same size -> stacking impossible
         ds['noise_lut_%s' % swathi] = xr.DataArray(noise_azi_lut[ii], coords={'line': line_azi[ii]}, dims=['line'])
     ds['line_start'] = xr.DataArray(line_azi_start, coords={'swath': swath}, dims=['swath'])
     ds['line_stop'] = xr.DataArray(line_azi_stop, coords={'swath': swath}, dims=['swath'])
@@ -384,18 +399,21 @@ def noise_lut_azi_raw_grd(line_azi,line_azi_start,line_azi_stop,
 
     return ds
 
-def noise_lut_azi_raw_slc(line_azi,line_azi_start,line_azi_stop,
-                  sample_azi_start, sample_azi_stop, noise_azi_lut, swath):
+
+def noise_lut_azi_raw_slc(line_azi, line_azi_start, line_azi_stop,
+                          sample_azi_start, sample_azi_stop, noise_azi_lut, swath):
     ds = xr.Dataset()
-    #if 'WV' in mode: # there is no noise in azimuth for WV acquisitions
-    if swath == []: #WV SLC case
-        ds['noise_lut'] = xr.DataArray(1.) # set noise_azimuth to one to make post steps like noise_azi*noise_range always possible
+    # if 'WV' in mode: # there is no noise in azimuth for WV acquisitions
+    if swath == []:  # WV SLC case
+        ds['noise_lut'] = xr.DataArray(
+            1.)  # set noise_azimuth to one to make post steps like noise_azi*noise_range always possible
         ds['line_start'] = xr.DataArray(line_azi_start, attrs={'swath': swath})
         ds['line_stop'] = xr.DataArray(line_azi_stop, attrs={'swath': swath})
         ds['sample_start'] = xr.DataArray(sample_azi_start, attrs={'swath': swath})
         ds['sample_stop'] = xr.DataArray(sample_azi_stop, attrs={'swath': swath})
     else:
-        ds['noise_lut'] = xr.DataArray(noise_azi_lut[0], coords={'line': line_azi[0]}, dims=['line']) # only on subswath opened
+        ds['noise_lut'] = xr.DataArray(noise_azi_lut[0], coords={'line': line_azi[0]},
+                                       dims=['line'])  # only on subswath opened
         ds['line_start'] = xr.DataArray(line_azi_start[0], attrs={'swath': swath})
         ds['line_stop'] = xr.DataArray(line_azi_stop[0], attrs={'swath': swath})
         ds['sample_start'] = xr.DataArray(sample_azi_start[0], attrs={'swath': swath})
@@ -405,9 +423,7 @@ def noise_lut_azi_raw_slc(line_azi,line_azi_start,line_azi_stop,
     # ds['line'] = xr.DataArray(np.stack(line_azi).T, coords={'line_index': np.arange(len(line_azi[0])), 'swath': swath},
     #                           dims=['line_index', 'swath'])
 
-
     return ds
-
 
 
 def noise_lut_azi(line_azi, line_azi_start,
@@ -515,6 +531,7 @@ def df_files(annotation_files, measurement_files, noise_files, calibration_files
     )
     return df
 
+
 def xsd_files_func(xsd_product_file):
     """
     return a xarray Dataset with path of the different xsd files
@@ -527,7 +544,7 @@ def xsd_files_func(xsd_product_file):
     return ds
 
 
-def orbit(time, frame, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, orbit_pass, platform_heading,return_xarray=True):
+def orbit(time, frame, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, orbit_pass, platform_heading, return_xarray=True):
     """
     Parameters
     ----------
@@ -553,10 +570,10 @@ def orbit(time, frame, pos_x, pos_y, pos_z, vel_x, vel_y, vel_z, orbit_pass, pla
         )
     else:
         res = xr.Dataset()
-        res['velocity_x'] = xr.DataArray(vel_x,dims=['time'],coords={'time':time})
-        res['velocity_y'] = xr.DataArray(vel_y, dims = ['time'], coords = {'time': time})
-        res['velocity_z'] = xr.DataArray(vel_z, dims = ['time'], coords = {'time': time})
-        res['position_x'] = xr.DataArray(pos_x,dims=['time'],coords={'time':time})
+        res['velocity_x'] = xr.DataArray(vel_x, dims=['time'], coords={'time': time})
+        res['velocity_y'] = xr.DataArray(vel_y, dims=['time'], coords={'time': time})
+        res['velocity_z'] = xr.DataArray(vel_z, dims=['time'], coords={'time': time})
+        res['position_x'] = xr.DataArray(pos_x, dims=['time'], coords={'time': time})
         res['position_y'] = xr.DataArray(pos_y, dims=['time'], coords={'time': time})
         res['position_z'] = xr.DataArray(pos_z, dims=['time'], coords={'time': time})
     res.attrs = {
@@ -589,11 +606,12 @@ def azimuth_fmrate(azimuthtime, t0, c0, c1, c2, polynomial):
         polynomial = np.stack([c0, c1, c2], axis=1)
     res = xr.Dataset()
     res['t0'] = xr.DataArray(t0, dims=['azimuthTime'], coords={'azimuthTime': azimuthtime},
-                             attrs={'source':xpath_mappings['annotation']['fmrate_t0'][1]})
+                             attrs={'source': xpath_mappings['annotation']['fmrate_t0'][1]})
     res['azimuthFmRatePolynomial'] = xr.DataArray([Polynomial(p) for p in polynomial],
-                                     dims=['azimuthTime'],
-                                     coords={'azimuthTime': azimuthtime},
-                                    attrs={'source':xpath_mappings['annotation']['fmrate_azimuthFmRatePolynomial'][1]})
+                                                  dims=['azimuthTime'],
+                                                  coords={'azimuthTime': azimuthtime},
+                                                  attrs={'source': xpath_mappings['annotation'][
+                                                      'fmrate_azimuthFmRatePolynomial'][1]})
     return res
 
 
@@ -626,23 +644,23 @@ def image(product_type, line_time_range, line_size, sample_size, incidence_angle
     else:
         pixel_sample_m = rangePixelSpacing
     tmp = {
-        'LineUtcTime': (line_time_range,'line_time_range'),
-        'numberOfLines':(line_size,'line_size'),
-        'numberOfSamples':(sample_size,'sample_size'),
-        'azimuthPixelSpacing': (azimuthPixelSpacing,'azimuthPixelSpacing'),
-        'slantRangePixelSpacing':(rangePixelSpacing,'rangePixelSpacing'),
-        'groundRangePixelSpacing': (pixel_sample_m,'rangePixelSpacing'),
-        'incidenceAngleMidSwath': (incidence_angle_mid_swath,'incidence_angle_mid_swath'),
-        'azimuthTimeInterval': (azimuth_time_interval,'azimuth_time_interval'),
-        'slantRangeTime': (slant_range_time_image,'slant_range_time_image'),
-        'swath_subswath': (swath_subswath,'swath_subswath'),
-        'radarFrequency': (radar_frequency,'radar_frequency'),
-        'rangeSamplingRate': (range_sampling_rate,'range_sampling_rate'),
-        'azimuthSteeringRate': (azimuth_steering_rate,'azimuth_steering_rate'),
+        'LineUtcTime': (line_time_range, 'line_time_range'),
+        'numberOfLines': (line_size, 'line_size'),
+        'numberOfSamples': (sample_size, 'sample_size'),
+        'azimuthPixelSpacing': (azimuthPixelSpacing, 'azimuthPixelSpacing'),
+        'slantRangePixelSpacing': (rangePixelSpacing, 'rangePixelSpacing'),
+        'groundRangePixelSpacing': (pixel_sample_m, 'rangePixelSpacing'),
+        'incidenceAngleMidSwath': (incidence_angle_mid_swath, 'incidence_angle_mid_swath'),
+        'azimuthTimeInterval': (azimuth_time_interval, 'azimuth_time_interval'),
+        'slantRangeTime': (slant_range_time_image, 'slant_range_time_image'),
+        'swath_subswath': (swath_subswath, 'swath_subswath'),
+        'radarFrequency': (radar_frequency, 'radar_frequency'),
+        'rangeSamplingRate': (range_sampling_rate, 'range_sampling_rate'),
+        'azimuthSteeringRate': (azimuth_steering_rate, 'azimuth_steering_rate'),
     }
     ds = xr.Dataset()
     for ke in tmp:
-        ds[ke] = xr.DataArray(tmp[ke][0],attrs={'source':xpath_mappings['annotation'][tmp[ke][1]][1]})
+        ds[ke] = xr.DataArray(tmp[ke][0], attrs={'source': xpath_mappings['annotation'][tmp[ke][1]][1]})
     return ds
 
 
@@ -688,9 +706,11 @@ def bursts(line_per_burst, sample_per_burst, burst_azimuthTime, burst_azimuthAnx
         da['byteOffset'].attrs = {'source': xpath_mappings['annotation']['burst_byteOffset'][1]}
         da['firstValidSample'].attrs = {'source': xpath_mappings['annotation']['burst_firstValidSample'][1]}
         da['lastValidSample'].attrs = {'source': xpath_mappings['annotation']['burst_lastValidSample'][1]}
-        #da['valid_location'].attrs = {'source': xpath_mappings['annotation']['burst_firstValidSample'][1]+'\n'+xpath_mappings['annotation']['burst_lastValidSample'][1]}
-    da['linesPerBurst'] = xr.DataArray(line_per_burst,attrs={'source':xpath_mappings['annotation']['linesPerBurst'][1]})
-    da['samplesPerBurst'] = xr.DataArray(sample_per_burst,attrs={'source':xpath_mappings['annotation']['samplesPerBurst'][1]})
+        # da['valid_location'].attrs = {'source': xpath_mappings['annotation']['burst_firstValidSample'][1]+'\n'+xpath_mappings['annotation']['burst_lastValidSample'][1]}
+    da['linesPerBurst'] = xr.DataArray(line_per_burst,
+                                       attrs={'source': xpath_mappings['annotation']['linesPerBurst'][1]})
+    da['samplesPerBurst'] = xr.DataArray(sample_per_burst,
+                                         attrs={'source': xpath_mappings['annotation']['samplesPerBurst'][1]})
     return da
 
 
@@ -733,34 +753,36 @@ def doppler_centroid_estimates(nb_dcestimate,
     ds = xr.Dataset()
     ds['t0'] = xr.DataArray(dc_t0.astype(float), dims=['azimuthTime'],
                             attrs={'source': xpath_mappings['annotation']['dc_t0'][1]},
-                            coords={'azimuthTime':dc_azimuth_time})
+                            coords={'azimuthTime': dc_azimuth_time})
     ds['geometryDcPolynomial'] = xr.DataArray([Polynomial(p) for p in dc_geoDcPoly], dims=['azimuthTime'],
-                                              attrs={'source':xpath_mappings['annotation']['dc_geoDcPoly'][1]},
-                                              coords={'azimuthTime':dc_azimuth_time})
+                                              attrs={'source': xpath_mappings['annotation']['dc_geoDcPoly'][1]},
+                                              coords={'azimuthTime': dc_azimuth_time})
     ds['dataDcPolynomial'] = xr.DataArray([Polynomial(p) for p in dc_dataDcPoly], dims=['azimuthTime'],
-                                          attrs={'source':xpath_mappings['annotation']['dc_dataDcPoly'][1]},
-                                          coords={'azimuthTime':dc_azimuth_time})
+                                          attrs={'source': xpath_mappings['annotation']['dc_dataDcPoly'][1]},
+                                          coords={'azimuthTime': dc_azimuth_time})
     dims = (nb_dcestimate, nb_fineDce)
 
-    ds['azimuthTime'].attrs={'source': xpath_mappings['annotation']['dc_azimuth_time'][1]}
+    ds['azimuthTime'].attrs = {'source': xpath_mappings['annotation']['dc_azimuth_time'][1]}
     ds['fineDceAzimuthStartTime'] = xr.DataArray(dc_azstarttime, dims=['azimuthTime'],
-                                                 attrs={'source':xpath_mappings['annotation']['dc_azstarttime'][1]},
-                                                 coords={'azimuthTime':dc_azimuth_time})
+                                                 attrs={'source': xpath_mappings['annotation']['dc_azstarttime'][1]},
+                                                 coords={'azimuthTime': dc_azimuth_time})
     ds['fineDceAzimuthStopTime'] = xr.DataArray(dc_azstoptime, dims=['azimuthTime'],
-                                                attrs={'source':xpath_mappings['annotation']['dc_azstoptime'][1]},
-                                                coords={'azimuthTime':dc_azimuth_time})
+                                                attrs={'source': xpath_mappings['annotation']['dc_azstoptime'][1]},
+                                                coords={'azimuthTime': dc_azimuth_time})
     ds['dataDcRmsError'] = xr.DataArray(dc_rmserr.astype(float), dims=['azimuthTime'],
-                                        attrs={'source':xpath_mappings['annotation']['dc_rmserr'][1]},
-                                        coords={'azimuthTime':dc_azimuth_time})
+                                        attrs={'source': xpath_mappings['annotation']['dc_rmserr'][1]},
+                                        coords={'azimuthTime': dc_azimuth_time})
     ds['slantRangeTime'] = xr.DataArray(dc_slantRangeTime.reshape(dims), dims=['azimuthTime', 'nb_fine_dce'],
                                         attrs={'source': xpath_mappings['annotation']['dc_slantRangeTime'][1]},
-                                        coords={'azimuthTime':dc_azimuth_time,'nb_fine_dce':np.arange(nb_fineDce)})
+                                        coords={'azimuthTime': dc_azimuth_time, 'nb_fine_dce': np.arange(nb_fineDce)})
     ds['frequency'] = xr.DataArray(dc_frequency.reshape(dims), dims=['azimuthTime', 'nb_fine_dce'],
                                    attrs={'source': xpath_mappings['annotation']['dc_frequency'][1]},
-                                   coords={'azimuthTime':dc_azimuth_time,'nb_fine_dce':np.arange(nb_fineDce)})
+                                   coords={'azimuthTime': dc_azimuth_time, 'nb_fine_dce': np.arange(nb_fineDce)})
     ds['dataDcRmsErrorAboveThreshold'] = xr.DataArray(dc_rmserrAboveThres, dims=['azimuthTime'],
-                                                      attrs={'source':xpath_mappings['annotation']['dc_rmserrAboveThres'][1]},
-                                                      coords={'azimuthTime':dc_azimuth_time})
+                                                      attrs={
+                                                          'source': xpath_mappings['annotation']['dc_rmserrAboveThres'][
+                                                              1]},
+                                                      coords={'azimuthTime': dc_azimuth_time})
     return ds
 
 
@@ -907,11 +929,12 @@ compounds_vars = {
     },
     'image': {
         'func': image,
-        'args': ('annotation.product_type','annotation.line_time_range', 'annotation.line_size', 'annotation.sample_size',
-                 'annotation.incidence_angle_mid_swath', 'annotation.azimuth_time_interval',
-                 'annotation.slant_range_time_image', 'annotation.azimuthPixelSpacing', 'annotation.rangePixelSpacing',
-                 'annotation.swath_subswath', 'annotation.radar_frequency', 'annotation.range_sampling_rate',
-                 'annotation.azimuth_steering_rate')
+        'args': (
+            'annotation.product_type', 'annotation.line_time_range', 'annotation.line_size', 'annotation.sample_size',
+            'annotation.incidence_angle_mid_swath', 'annotation.azimuth_time_interval',
+            'annotation.slant_range_time_image', 'annotation.azimuthPixelSpacing', 'annotation.rangePixelSpacing',
+            'annotation.swath_subswath', 'annotation.radar_frequency', 'annotation.range_sampling_rate',
+            'annotation.azimuth_steering_rate')
     },
     'azimuth_fmrate': {
         'func': azimuth_fmrate,

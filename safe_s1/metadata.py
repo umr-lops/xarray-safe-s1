@@ -295,7 +295,11 @@ class Sentinel1Reader:
         pols = []
         tmp = []
         for pol_code, xml_file in self.files['calibration'].items():
-            luts_ds = self.xml_parser.get_compound_var(xml_file,'luts_raw')
+            luts_ds = self.xml_parser.get_compound_var(xml_file, 'luts_raw')
+            # add history to attributes
+            for da in luts_ds:
+                luts_ds[da].attrs['history'] = self.xml_parser.get_compound_var(xml_file, da, describe=True)
+
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
             tmp.append(luts_ds)
@@ -308,14 +312,17 @@ class Sentinel1Reader:
     def get_noise_azi_raw(self):
         tmp = []
         pols = []
+        history = []
         for pol_code, xml_file in self.files['noise'].items():
             #pol = self.files['polarization'].cat.categories[pol_code-1]
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
             if self.product == 'SLC':
-                noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file,'noise_lut_azi_raw_slc')
+                noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc')
+                history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc', describe=True))
             else:
                 noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_grd')
+                history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_grd', describe=True))
             for vari in noise_lut_azi_raw_ds:
                 if 'noise_lut' in vari:
                     varitmp = 'noiseLut'
@@ -331,6 +338,7 @@ class Sentinel1Reader:
                 noise_lut_azi_raw_ds[vari].attrs['description'] = hihi
             tmp.append(noise_lut_azi_raw_ds)
         ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        ds.attrs['history'] = '\n'.join(history)
         return ds
 
     @property
