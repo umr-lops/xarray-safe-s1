@@ -1,5 +1,14 @@
 import os
+import re
+
+import dask
 import fsspec
+import numpy as np
+import rasterio
+import yaml
+from affine import Affine
+from rioxarray import rioxarray
+
 from . import sentinel1_xml_mappings
 from .xml_parser import XmlParser
 import xarray as xr
@@ -99,6 +108,200 @@ class Sentinel1Reader:
                 'noise_range_raw': self.get_noise_range_raw,
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
+
+    def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
+        """
+        load digital_number from self.sar_meta.files['measurement'], as an `xarray.Dataset`.
+
+        Parameters
+        ----------
+        resolution: None, number, str or dict
+            see `xsar.open_dataset`
+        resampling: rasterio.enums.Resampling
+            see `xsar.open_dataset`
+
+        Returns
+        -------
+        (float, xarray.Dataset)
+            tuple that contains resolution and dataset (possibly dual-pol), with basic coords/dims naming convention
+        """
+
+        def get_glob(strlist):
+            # from list of str, replace diff by '?'
+            def _get_glob(st):
+                stglob = ''.join(
+                    [
+                        '?' if len(charlist) > 1 else charlist[0]
+                        for charlist in [list(set(charset)) for charset in zip(*st)]
+                    ]
+                )
+                return re.sub(r'\?+', '*', stglob)
+
+            strglob = _get_glob(strlist)
+            if strglob.endswith('*'):
+                strglob += _get_glob(s[::-1] for s in strlist)[::-1]
+                strglob = strglob.replace('**', '*')
+
+            return strglob
+
+        map_dims = {
+            'pol': 'band',
+            'line': 'y',
+            'sample': 'x'
+        }
+
+        _dtypes = {
+            'latitude': 'f4',
+            'longitude': 'f4',
+            'incidence': 'f4',
+            'elevation': 'f4',
+            'altitude': 'f4',
+            'ground_heading': 'f4',
+            'nesz': None,
+            'negz': None,
+            'sigma0_raw': None,
+            'gamma0_raw': None,
+            'noise_lut': 'f4',
+            'noise_lut_range': 'f4',
+            'noise_lut_azi': 'f4',
+            'sigma0_lut': 'f8',
+            'gamma0_lut': 'f8',
+            'azimuth_time': np.datetime64,
+            'slant_range_time': None
+        }
+
+        if resolution is not None:
+            comment = 'resampled at "%s" with %s.%s.%s' % (
+                resolution, resampling.__module__, resampling.__class__.__name__, resampling.name)
+        else:
+            comment = 'read at full resolution'
+
+        # Add root to path
+        files_measurement = self.files['measurement'].copy()
+        files_measurement = [os.path.join(self.path, f) for f in files_measurement]
+
+        # arbitrary rio object, to get shape, etc ... (will not be used to read data)
+        rio = rasterio.open(files_measurement[0])
+
+        chunks['pol'] = 1
+        # sort chunks keys like map_dims
+        chunks = dict(sorted(chunks.items(), key=lambda pair: list(map_dims.keys()).index(pair[0])))
+        chunks_rio = {map_dims[d]: chunks[d] for d in map_dims.keys()}
+        res = None
+        if resolution is None:
+            # using tiff driver: need to read individual tiff and concat them
+            # riofiles['rio'] is ordered like self.sar_meta.manifest_attrs['polarizations']
+
+            dn = xr.concat(
+                [
+                    rioxarray.open_rasterio(
+                        f, chunks=chunks_rio, parse_coordinates=False
+                    ) for f in files_measurement
+                ], 'band'
+            ).assign_coords(band=np.arange(len(self.manifest_attrs['polarizations'])) + 1)
+
+            # set dimensions names
+            dn = dn.rename(dict(zip(map_dims.values(), map_dims.keys())))
+
+            # create coordinates from dimension index (because of parse_coordinates=False)
+            dn = dn.assign_coords({'line': dn.line, 'sample': dn.sample})
+            dn = dn.drop_vars('spatial_ref', errors='ignore')
+        else:
+            if not isinstance(resolution, dict):
+                if isinstance(resolution, str) and resolution.endswith('m'):
+                    resolution = float(resolution[:-1])
+                    res = resolution
+                resolution = dict(line=resolution / self.pixel_line_m,
+                                  sample=resolution / self.pixel_sample_m)
+                # resolution = dict(line=resolution / self.dataset['sampleSpacing'].values,
+                #                   sample=resolution / self.dataset['lineSpacing'].values)
+
+            # resample the DN at gdal level, before feeding it to the dataset
+            out_shape = (
+                int(rio.height / resolution['line']),
+                int(rio.width / resolution['sample'])
+            )
+            out_shape_pol = (1,) + out_shape
+            # read resampled array in one chunk, and rechunk
+            # this doesn't optimize memory, but total size remain quite small
+
+            if isinstance(resolution['line'], int):
+                # legacy behaviour: winsize is the maximum full image size that can be divided  by resolution (int)
+                winsize = (0, 0, rio.width // resolution['sample'] * resolution['sample'],
+                           rio.height // resolution['line'] * resolution['line'])
+                window = rasterio.windows.Window(*winsize)
+            else:
+                window = None
+
+            dn = xr.concat(
+                [
+                    xr.DataArray(
+                        dask.array.from_array(
+                            rasterio.open(f).read(
+                                out_shape=out_shape_pol,
+                                resampling=resampling,
+                                window=window
+                            ),
+                            chunks=chunks_rio
+                        ),
+                        dims=tuple(map_dims.keys()), coords={'pol': [pol]}
+                    ) for f, pol in
+                    zip(files_measurement, self.manifest_attrs['polarizations'])
+                ],
+                'pol'
+            ).chunk(chunks)
+
+            # create coordinates at box center
+            translate = Affine.translation((resolution['sample'] - 1) / 2, (resolution['line'] - 1) / 2)
+            scale = Affine.scale(
+                rio.width // resolution['sample'] * resolution['sample'] / out_shape[1],
+                rio.height // resolution['line'] * resolution['line'] / out_shape[0])
+            sample, _ = translate * scale * (dn.sample, 0)
+            _, line = translate * scale * (0, dn.line)
+            dn = dn.assign_coords({'line': line, 'sample': sample})
+
+        # for GTiff driver, pols are already ordered. just rename them
+        dn = dn.assign_coords(pol=self.manifest_attrs['polarizations'])
+
+        if not all(self.denoised.values()):
+            descr = 'denoised'
+        else:
+            descr = 'not denoised'
+        var_name = 'digital_number'
+
+        dn.attrs = {
+            'comment': '%s digital number, %s' % (descr, comment),
+            'history': yaml.safe_dump(
+                {
+                    var_name: get_glob(
+                        [p.replace(self.path + '/', '') for p in files_measurement])
+                }
+            )
+        }
+        ds = dn.to_dataset(name=var_name)
+        astype = _dtypes.get(var_name)
+        if astype is not None:
+            ds = ds.astype(_dtypes[var_name])
+
+        return res, ds
+
+    @property
+    def pixel_line_m(self):
+        """pixel line spacing, in meters (at sensor level)"""
+        if self.multidataset:
+            res = None  # not defined for multidataset
+        else:
+            res = self.image['azimuthPixelSpacing']
+        return res
+
+    @property
+    def pixel_sample_m(self):
+        """pixel sample spacing, in meters (at sensor level)"""
+        if self.multidataset:
+            res = None  # not defined for multidataset
+        else:
+            res = self.image['groundRangePixelSpacing']
+        return res
 
     @property
     def datasets_names(self):
