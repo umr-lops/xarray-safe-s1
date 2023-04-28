@@ -12,7 +12,6 @@ from rioxarray import rioxarray
 from . import sentinel1_xml_mappings
 from .xml_parser import XmlParser
 import xarray as xr
-import geopandas as gpd
 import datatree
 import pandas as pd
 import warnings
