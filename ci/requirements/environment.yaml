@@ -29,7 +29,6 @@ dependencies:
   - numpy
   - pandas
   - shapely
-  - scipy
   - datetime
   - geopandas
   - affine

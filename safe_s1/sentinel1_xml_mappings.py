@@ -4,7 +4,6 @@ xpath mapping from xml file, with convertion functions
 import xarray
 from datetime import datetime
 import numpy as np
-from scipy.interpolate import RectBivariateSpline
 import pandas as pd
 import xarray as xr
 from numpy.polynomial import Polynomial
@@ -239,13 +238,6 @@ xpath_mappings = {
 }
 
 
-# compounds variables converters
-
-def signal_lut(line, sample, lut):
-    lut_f = RectBivariateSpline(line, sample, lut, kx=1, ky=1)
-    return lut_f
-
-
 def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0):
     ds = xr.Dataset()
     ds['sigma0_lut'] = xr.DataArray(lut_sigma0, dims=['line', 'sample'], coords={'line': line, 'sample': sample},
@@ -331,12 +323,6 @@ def noise_lut_azi_raw_slc(line_azi, line_azi_start, line_azi_stop,
     #                           dims=['line_index', 'swath'])
 
     return ds
-
-
-def annotation_angle(line, sample, angle):
-    lut = angle.reshape(line.size, sample.size)
-    lut_f = RectBivariateSpline(line, sample, lut, kx=1, ky=1)
-    return lut_f
 
 
 def datetime64_array(dates):
@@ -678,18 +664,9 @@ compounds_vars = {
             'manifest.xsd_product_file',
         )
     },
-
-    'sigma0_lut': {
-        'func': signal_lut,
-        'args': ('calibration.line', 'calibration.sample', 'calibration.sigma0_lut')
-    },
     'luts_raw': {
         'func': signal_lut_raw,
         'args': ('calibration.line', 'calibration.sample', 'calibration.sigma0_lut', 'calibration.gamma0_lut')
-    },
-    'gamma0_lut': {
-        'func': signal_lut,
-        'args': ('calibration.line', 'calibration.sample', 'calibration.gamma0_lut')
     },
     'noise_lut_range_raw': {
         'func': noise_lut_range_raw,
