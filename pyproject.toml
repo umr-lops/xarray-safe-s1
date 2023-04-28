@@ -3,13 +3,20 @@ name = "xarray-safe-s1"
 requires-python = ">= 3.10"
 license = {text = "MIT"}
 dependencies = [
-    "toolz",
+    "geopandas",
     "numpy",
     "xarray",
     "xarray-datatree",
     "lxml",
-    "xmlschema",
     "rioxarray",
+    "jmespath",
+    "fsspec",
+    "rasterio",
+    "affine",
+    "pandas",
+    "shapely",
+    "pyproj",
+    "dask"
 ]
 dynamic = ["version"]
 
@@ -28,4 +35,4 @@ profile = "black"
 skip_gitignore = true
 float_to_top = true
 default_section = "THIRDPARTY"
-known_first_party = "safe_rcm"
+known_first_party = "safe_s1"

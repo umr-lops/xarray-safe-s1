@@ -4,8 +4,7 @@ xpath mapping from xml file, with convertion functions
 import xarray
 from datetime import datetime
 import numpy as np
-from scipy.interpolate import RectBivariateSpline, interp1d
-from shapely.geometry import box
+from scipy.interpolate import RectBivariateSpline
 import pandas as pd
 import xarray as xr
 from numpy.polynomial import Polynomial
@@ -257,98 +256,6 @@ def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0):
     return ds
 
 
-class _NoiseLut:
-    """small internal class that return a lut function(lines, samples) defined on all the image, from blocks in the image"""
-
-    def __init__(self, blocks):
-        self.blocks = blocks
-
-    def __call__(self, lines, samples):
-        """ return noise[a.size,x.size], by finding the intersection with blocks and calling the corresponding block.lut_f"""
-        if len(self.blocks) == 0:
-            # no noise (ie no azi noise for ipf < 2.9)
-            return 1
-        else:
-            # the array to be returned
-            noise = xr.DataArray(
-                np.ones((lines.size, samples.size)) * np.nan,
-                dims=('line', 'sample'),
-                coords={'line': lines, 'sample': samples}
-            )
-            # find blocks that intersects with asked_box
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                # the box coordinates of the returned array
-                asked_box = box(max(0, lines[0] - 0.5), max(0, samples[0] - 0.5), lines[-1] + 0.5,
-                                samples[-1] + 0.5)
-                # set match_blocks as the non empty intersection with asked_box
-                match_blocks = self.blocks.copy()
-                match_blocks.geometry = self.blocks.geometry.intersection(asked_box)
-                match_blocks = match_blocks[~match_blocks.is_empty]
-            for i, block in match_blocks.iterrows():
-                (sub_a_min, sub_x_min, sub_a_max, sub_x_max) = map(int, block.geometry.bounds)
-                sub_a = lines[(lines >= sub_a_min) & (lines <= sub_a_max)]
-                sub_x = samples[(samples >= sub_x_min) & (samples <= sub_x_max)]
-                noise.loc[dict(line=sub_a, sample=sub_x)] = block.lut_f(sub_a, sub_x)
-
-        # values returned as np array
-        return noise.values
-
-
-def noise_lut_range(lines, samples, noiseLuts):
-    """
-
-    Parameters
-    ----------
-    lines: np.ndarray
-        1D array of lines. lut is defined at each line
-    samples: list of np.ndarray
-        arrays of samples. list length is same as samples. each array define samples where lut is defined
-    noiseLuts: list of np.ndarray
-        arrays of luts. Same structure as samples.
-
-    Returns
-    -------
-    geopandas.GeoDataframe
-        noise range geometry.
-        'geometry' is the polygon where 'lut_f' is defined.
-        attrs['type'] set to 'sample'
-
-
-    """
-
-    class Lut_box_range:
-        def __init__(self, a_start, a_stop, x, l):
-            self.lines = np.arange(a_start, a_stop)
-            self.samples = x
-            self.area = box(a_start, x[0], a_stop, x[-1])
-            self.lut_f = interp1d(x, l, kind='linear', fill_value=np.nan, assume_sorted=True, bounds_error=False)
-
-        def __call__(self, lines, samples):
-            lut = np.tile(self.lut_f(samples), (lines.size, 1))
-            return lut
-
-    blocks = []
-    # lines is where lut is defined. compute lines interval validity
-    lines_start = (lines - np.diff(lines, prepend=0) / 2).astype(int)
-    lines_stop = np.ceil(
-        lines + np.diff(lines, append=lines[-1] + 1) / 2
-    ).astype(int)  # end is not included in the interval
-    lines_stop[-1] = 65535  # be sure to include all image if last azimuth line, is not last azimuth image
-    for a_start, a_stop, x, l in zip(lines_start, lines_stop, samples, noiseLuts):
-        lut_f = Lut_box_range(a_start, a_stop, x, l)
-        block = pd.Series(dict([
-            ('lut_f', lut_f),
-            ('geometry', lut_f.area)]))
-        blocks.append(block)
-
-    # to geopandas
-    blocks = pd.concat(blocks, axis=1).T
-    blocks = gpd.GeoDataFrame(blocks)
-
-    return _NoiseLut(blocks)
-
-
 def noise_lut_range_raw(lines, samples, noiseLuts):
     """
 
@@ -424,70 +331,6 @@ def noise_lut_azi_raw_slc(line_azi, line_azi_start, line_azi_stop,
     #                           dims=['line_index', 'swath'])
 
     return ds
-
-
-def noise_lut_azi(line_azi, line_azi_start,
-                  line_azi_stop,
-                  sample_azi_start, sample_azi_stop, noise_azi_lut, swath):
-    """
-
-    Parameters
-    ----------
-    line_azi
-    line_azi_start
-    line_azi_stop
-    sample_azi_start
-    sample_azi_stop
-    noise_azi_lut
-    swath
-
-    Returns
-    -------
-    geopandas.GeoDataframe
-        noise range geometry.
-        'geometry' is the polygon where 'lut_f' is defined.
-        attrs['type'] set to 'line'
-    """
-
-    class Lut_box_azi:
-        def __init__(self, sw, a, a_start, a_stop, x_start, x_stop, lut):
-            self.lines = a
-            self.samples = np.arange(x_start, x_stop + 1)
-            self.area = box(max(0, a_start - 0.5), max(0, x_start - 0.5), a_stop + 0.5, x_stop + 0.5)
-            if len(lut) > 1:
-                self.lut_f = interp1d(a, lut, kind='linear', fill_value='extrapolate', assume_sorted=True,
-                                      bounds_error=False)
-            else:
-                # not enought values to do interpolation
-                # noise will be constant on this box!
-                self.lut_f = lambda _a: lut
-
-        def __call__(self, lines, samples):
-            return np.tile(self.lut_f(lines), (samples.size, 1)).T
-
-    blocks = []
-    for sw, a, a_start, a_stop, x_start, x_stop, lut in zip(swath, line_azi, line_azi_start, line_azi_stop,
-                                                            sample_azi_start,
-                                                            sample_azi_stop, noise_azi_lut):
-        lut_f = Lut_box_azi(sw, a, a_start, a_stop, x_start, x_stop, lut)
-        block = pd.Series(dict([
-            ('lut_f', lut_f),
-            ('geometry', lut_f.area)]))
-        blocks.append(block)
-
-    if len(blocks) == 0:
-        # no azi noise (ipf < 2.9) or WV
-        blocks.append(pd.Series(dict([
-            ('lines', np.array([])),
-            ('samples', np.array([])),
-            ('lut_f', lambda a, x: 1),
-            ('geometry', box(0, 0, 65535, 65535))])))  # arbitrary large box (bigger than whole image)
-
-    # to geopandas
-    blocks = pd.concat(blocks, axis=1).T
-    blocks = gpd.GeoDataFrame(blocks)
-
-    return _NoiseLut(blocks)
 
 
 def annotation_angle(line, sample, angle):
@@ -848,21 +691,9 @@ compounds_vars = {
         'func': signal_lut,
         'args': ('calibration.line', 'calibration.sample', 'calibration.gamma0_lut')
     },
-    'noise_lut_range': {
-        'func': noise_lut_range,
-        'args': ('noise.range.line', 'noise.range.sample', 'noise.range.noiseLut')
-    },
     'noise_lut_range_raw': {
         'func': noise_lut_range_raw,
         'args': ('noise.range.line', 'noise.range.sample', 'noise.range.noiseLut')
-    },
-    'noise_lut_azi': {
-        'func': noise_lut_azi,
-        'args': (
-            'noise.azi.line', 'noise.azi.line_start', 'noise.azi.line_stop',
-            'noise.azi.sample_start',
-            'noise.azi.sample_stop', 'noise.azi.noiseLut',
-            'noise.azi.swath')
     },
     'noise_lut_azi_raw_grd': {
         'func': noise_lut_azi_raw_grd,

@@ -21,13 +21,21 @@ dependencies:
   - h5netcdf
   - zarr
   - scipy
+  - rasterio
   # data
   - xarray
   - xarray-datatree
   - dask
   - numpy
   - pandas
+  - shapely
+  - scipy
+  - datetime
+  - geopandas
+  - affine
+  - pyproj
   # processing
-  - toolz
+  - os
+  - io
   - lxml
-  - xmlschema
+  - jmespath

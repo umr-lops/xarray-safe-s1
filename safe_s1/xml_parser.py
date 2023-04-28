@@ -1,12 +1,10 @@
-import fsspec
-from lxml import objectify, etree
+from lxml import objectify
 import jmespath
 import logging
 from collections.abc import Iterable
-import os
 import re
 import yaml
-from io import StringIO, BytesIO
+from io import BytesIO
 
 logger = logging.getLogger('xsar.xml_parser')
 logger.addHandler(logging.NullHandler())
