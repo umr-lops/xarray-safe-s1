@@ -509,8 +509,11 @@ class Sentinel1Reader:
         for pol_code, xml_file in self.files['calibration'].items():
             luts_ds = self.xml_parser.get_compound_var(xml_file, 'luts_raw')
             # add history to attributes
+            minifile = re.sub('.*SAFE/', '', xml_file)
+            minifile = re.sub(r'-.*\.xml', '.xml', minifile)
             for da in luts_ds:
-                luts_ds[da].attrs['history'] = self.xml_parser.get_compound_var(xml_file, da, describe=True)
+                histo = self.xml_parser.get_var(xml_file, f"calibration.{da}", describe=True)
+                luts_ds[da].attrs['history'] = yaml.safe_dump({da: {minifile: histo}})
 
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
