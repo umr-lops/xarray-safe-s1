@@ -58,8 +58,6 @@ class Sentinel1Reader:
         self._safe_files = None
         self._multidataset = False
         """True if multi dataset"""
-        self.subdatasets = gpd.GeoDataFrame(geometry=[], index=[])
-        """Subdatasets as GeodataFrame (empty if single dataset)"""
         self._datasets_names = list(self.safe_files['dsid'].sort_index().unique())
         self.xsd_definitions = self.get_annotation_definitions()
         if self.name.endswith(':') and len(self._datasets_names) == 1:
@@ -80,14 +78,6 @@ class Sentinel1Reader:
         if self.short_name.endswith(':'):
             self.short_name = self.short_name + self.dsid
         if self.files.empty:
-            try:
-                self.subdatasets = gpd.GeoDataFrame(geometry=self.manifest_attrs['footprints'], index=self._datasets_names)
-            except ValueError:
-                # not as many footprints than subdatasets count. (probably TOPS product)
-                #self._submeta = [ReadMetadata(subds) for subds in self._datasets_names]
-                # sub_footprints = [submeta.footprint for submeta in self._submeta]
-                self.subdatasets = gpd.GeoDataFrame(  # geometry=sub_footprints,
-                    index=self._datasets_names)
             self._multidataset = True
 
         self.dt = None
