@@ -517,7 +517,6 @@ class Sentinel1Reader:
         pols = []
         history = []
         for pol_code, xml_file in self.files['noise'].items():
-            #pol = self.files['polarization'].cat.categories[pol_code-1]
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
             if self.product == 'SLC':
@@ -525,6 +524,8 @@ class Sentinel1Reader:
                 history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc', describe=True))
             else:
                 noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_grd')
+                #noise_lut_azi_raw_ds.attrs[f'raw_azi_lut_{pol}'] = \
+                #    self.xml_parser.get_var(xml_file, 'noise.azi.noiseLut')
                 history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_grd', describe=True))
             for vari in noise_lut_azi_raw_ds:
                 if 'noise_lut' in vari:
@@ -562,6 +563,25 @@ class Sentinel1Reader:
             tmp.append(noise_lut_range_raw_ds)
         ds = xr.concat(tmp, pd.Index(pols, name="pol"))
         return ds
+
+    def get_noise_azi_initial_parameters(self, pol):
+        """
+        Retrieve initial noise lut and lines
+
+        Parameters
+        ----------
+        pol: str
+            polarization selected
+
+        Returns
+        -------
+        (List, List)
+            Tuple that contains the noise azimuth lines and noise azimuth lut for the pol selected.
+        """
+        for pol_code, xml_file in self.files['noise'].items():
+            if pol in os.path.basename(xml_file).upper():
+                return self.xml_parser.get_var(xml_file, 'noise.azi.line'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.noiseLut')
 
     @property
     def safe_files(self):
