@@ -406,6 +406,14 @@ class Sentinel1Reader:
 
     @property
     def image(self) -> xr.Dataset:
+        """
+        Get image information
+
+        Returns
+        -------
+        xarray.Dataset
+            Image information dataArrays
+        """
         if self.multidataset:
             return None
         img_dict = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'image')
@@ -445,6 +453,14 @@ class Sentinel1Reader:
 
     @property
     def bursts(self):
+        """
+        Get bursts information
+
+        Returns
+        -------
+        xarray.Dataset
+            Bursts information dataArrays
+        """
         if self.xml_parser.get_var(self.files['annotation'].iloc[0], 'annotation.number_of_bursts') > 0:
             bursts = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts')
             for vv in bursts:
@@ -468,8 +484,12 @@ class Sentinel1Reader:
 
     def get_annotation_definitions(self):
         """
+        Get annotation definitions (paths used to retrieve concerned data in the files)
 
-        :return:
+        Returns
+        -------
+        dict
+            annotations definitions
         """
         final_dict = {}
         ds_path_xsd = self.xml_parser.get_compound_var(self.manifest, 'xsd_files')
@@ -513,6 +533,14 @@ class Sentinel1Reader:
 
     @property
     def get_noise_azi_raw(self):
+        """
+        Get raw noise azimuth lut
+
+        Returns
+        -------
+        xarray.Dataset
+            raw noise azimuth lut
+        """
         tmp = []
         pols = []
         history = []
@@ -547,6 +575,14 @@ class Sentinel1Reader:
 
     @property
     def get_noise_range_raw(self):
+        """
+        Get raw noise range lut
+
+        Returns
+        -------
+        xarray.Dataset
+            raw noise range lut
+        """
         tmp = []
         pols = []
         for pol_code, xml_file in self.files['noise'].items():
@@ -575,12 +611,18 @@ class Sentinel1Reader:
 
         Returns
         -------
-        (List, List)
-            Tuple that contains the noise azimuth lines and noise azimuth lut for the pol selected.
+        (List, List, List, List, List, List, List)
+            Tuple that contains the swaths, noise azimuth lines, line_start, line_stop, sample_start, sample_stop and
+            noise azimuth lut for the pol selected.
         """
         for pol_code, xml_file in self.files['noise'].items():
             if pol in os.path.basename(xml_file).upper():
-                return self.xml_parser.get_var(xml_file, 'noise.azi.line'),\
+                return self.xml_parser.get_var(xml_file, 'noise.azi.swath'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.line'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.line_start'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.line_stop'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.sample_start'),\
+                    self.xml_parser.get_var(xml_file, 'noise.azi.sample_stop'),\
                     self.xml_parser.get_var(xml_file, 'noise.azi.noiseLut')
 
     @property
