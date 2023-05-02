@@ -10,6 +10,7 @@ dependencies:
   - nbsphinx
   - jupyter_sphinx
   - sphinx_rtd_theme
+  - aiohttp
   - pip
   - pip:
       - -e ../..
