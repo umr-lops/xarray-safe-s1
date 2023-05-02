@@ -388,7 +388,7 @@ class Sentinel1Reader:
             return self.xml_parser.get_var(self.files['annotation'].iloc[0], 'annotation.line_time_range')
 
     @property
-    def image(self) -> xr.Dataset:
+    def image(self):
         """
         Get image information
 
