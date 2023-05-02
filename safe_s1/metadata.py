@@ -105,9 +105,7 @@ class Sentinel1Reader:
         Parameters
         ----------
         resolution: None, number, str or dict
-            see `xsar.open_dataset`
         resampling: rasterio.enums.Resampling
-            see `xsar.open_dataset`
 
         Returns
         -------
@@ -315,10 +313,6 @@ class Sentinel1Reader:
         datatree.Datatree
             Contains data from the reader
         """
-        """if self.multidataset:
-            raise warnings.warn("Please select an only dataset from `Sentinel1Reader.datasets_names`")
-            return self.dt
-        else:"""
         return self.dt
 
     @property
@@ -667,7 +661,7 @@ class Sentinel1Reader:
 
         See Also
         --------
-        xsar.Sentinel1Meta.safe_files
+        safe_s1.metadata.safe_files
         """
         return self.safe_files[self.safe_files['dsid'] == self.name]
 
