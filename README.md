@@ -29,7 +29,7 @@ pip install xarray-safe-s1
 ```
 
 
-```python
+```pycon
 >>> from safe_s1 import Sentinel1Reader, sentinel1_xml_mappings
 >>> filename = sentinel1_xml_mappings.get_test_file('S1A_IW_GRDH_1SDV_20170907T103020_20170907T103045_018268_01EB76_Z010.SAFE')
 >>> Sentinel1Reader(filename).datatree
