@@ -10,4 +10,4 @@ dependencies:
   - nbsphinx
   - jupyter_sphinx
   - sphinx_rtd_theme
-  - xarray-safe-s1
+  - git+https://github.com/umr-lops/xarray-safe-s1.git
