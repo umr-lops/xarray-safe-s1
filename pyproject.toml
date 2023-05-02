@@ -18,7 +18,8 @@ dependencies = [
     "pyproj",
     "dask",
 ]
-dynamic = ["version"]
+readme = "README.md"
+dynamic = ["version", "readme"]
 
 [build-system]
 requires = ["setuptools>=64.0", "setuptools-scm"]
