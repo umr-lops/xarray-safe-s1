@@ -19,7 +19,7 @@ dependencies = [
     "dask",
 ]
 readme = "README.md"
-dynamic = ["version", "readme"]
+dynamic = ["version"]
 
 [build-system]
 requires = ["setuptools>=64.0", "setuptools-scm"]
