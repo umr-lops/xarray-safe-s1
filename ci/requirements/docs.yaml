@@ -10,3 +10,4 @@ dependencies:
   - nbsphinx
   - jupyter_sphinx
   - sphinx_rtd_theme
+  - xarray-safe-s1
