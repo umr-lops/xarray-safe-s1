@@ -16,7 +16,7 @@ dependencies = [
     "pandas",
     "shapely",
     "pyproj",
-    "dask"
+    "dask",
 ]
 dynamic = ["version"]
 

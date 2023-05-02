@@ -25,7 +25,7 @@ Examples
 
 .. note::
 
-    Those examples use `xsar` will automatically download test data from https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata/
+    Those examples use `sentinel1_xml_mappings.get_test_file` to automatically download test data from https://cyclobs.ifremer.fr/static/sarwing_datarmor/xsardata/
 
     Those file are not official ones: they are resampled to a lower resolution and compressed to avoid big network transfert and disk usage.
 
