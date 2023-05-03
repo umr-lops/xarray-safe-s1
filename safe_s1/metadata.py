@@ -632,7 +632,7 @@ class Sentinel1Reader:
 
         See Also
         --------
-        xsar.Sentinel1Meta.files
+        self.files
 
         """
         if self._safe_files is None:
@@ -661,7 +661,7 @@ class Sentinel1Reader:
 
         See Also
         --------
-        safe_s1.metadata.safe_files
+        self.safe_files
         """
         return self.safe_files[self.safe_files['dsid'] == self.name]
 

@@ -10,6 +10,10 @@ dependencies:
   - nbsphinx
   - jupyter_sphinx
   - aiohttp
+  - xarray
+  - xarray-datatree
+  - rasterio
+  - pandas
   - pip
   - pip:
       - -e ../..
