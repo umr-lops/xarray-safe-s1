@@ -274,7 +274,14 @@ class Sentinel1Reader:
 
     @property
     def pixel_line_m(self):
-        """pixel line spacing, in meters (at sensor level)"""
+        """
+        pixel line spacing, in meters (at sensor level)
+
+        Returns
+        -------
+        xarray.Dataset
+            Sample spacing
+        """
         if self.multidataset:
             res = None  # not defined for multidataset
         else:
@@ -283,7 +290,14 @@ class Sentinel1Reader:
 
     @property
     def pixel_sample_m(self):
-        """pixel sample spacing, in meters (at sensor level)"""
+        """
+        pixel sample spacing, in meters (at sensor level)
+
+        Returns
+        -------
+        xarray.Dataset
+            Sample spacing
+        """
         if self.multidataset:
             res = None  # not defined for multidataset
         else:
@@ -297,7 +311,8 @@ class Sentinel1Reader:
 
         Returns
         -------
-
+        list
+            datasets names
         """
         return self._datasets_names
 
@@ -310,7 +325,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        datatree.datatree.Datatree
+        datatree.DataTree
             Contains data from the reader
         """
         return self.dt
@@ -320,6 +335,11 @@ class Sentinel1Reader:
         """
         xarray.Dataset with `['longitude', 'latitude', 'altitude', 'azimuth_time', 'slant_range_time','incidence','elevation' ]` variables
         and `['line', 'sample']` coordinates, at the geolocation grid
+
+        Returns
+        -------
+        xarray.Dataset
+            Geolocation Grid
         """
         if self.multidataset:
             raise TypeError('geolocation_grid not available for multidataset')
@@ -354,7 +374,6 @@ class Sentinel1Reader:
         Notes
         -----
         orbit is longer than the SAFE, because it belongs to all datatakes, not only this slice
-
         """
         if self.multidataset:
             return None  # not defined for multidataset
@@ -368,7 +387,14 @@ class Sentinel1Reader:
 
     @property
     def denoised(self):
-        """dict with pol as key, and bool as values (True is DN is predenoised at L1 level)"""
+        """
+        dict with pol as key, and bool as values (True is DN is predenoised at L1 level)
+
+        Returns
+        -------
+        None | dict
+
+        """
         if self.multidataset:
             return None  # not defined for multidataset
         else:
@@ -409,6 +435,9 @@ class Sentinel1Reader:
     @property
     def azimuth_fmrate(self):
         """
+
+        Returns
+        -------
         xarray.Dataset
             Frequency Modulation rate annotations such as t0 (azimuth time reference) and polynomial coefficients: Azimuth FM rate = c0 + c1(tSR - t0) + c2(tSR - t0)^2
         """
@@ -423,6 +452,9 @@ class Sentinel1Reader:
     @property
     def doppler_estimate(self):
         """
+
+        Returns
+        -------
         xarray.Dataset
             with Doppler Centroid Estimates from annotations such as geo_polynom,data_polynom or frequency
         """
@@ -462,6 +494,10 @@ class Sentinel1Reader:
     def multidataset(self):
         """
         Alias to `Sentinel1Reader._multidataset`
+
+        Returns
+        -------
+        bool
         """
         return self._multidataset
 
@@ -496,6 +532,11 @@ class Sentinel1Reader:
     def get_calibration_luts(self):
         """
         get original (ie not interpolation) xr.Dataset sigma0 and gamma0 Look Up Tables to apply calibration
+
+        Returns
+        -------
+        xarray.Dataset
+            Original sigma0 and gamma0 calibration Look Up Tables
         """
         #sigma0_lut = self.xml_parser.get_var(self.files['calibration'].iloc[0], 'calibration.sigma0_lut',describe=True)
         pols = []
