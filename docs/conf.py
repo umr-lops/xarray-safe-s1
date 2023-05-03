@@ -49,7 +49,7 @@ exclude_patterns = ["_build", "directory"]
 nitpicky = True
 
 # Napoleon settings
-napoleon_google_docstring = True
+napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = False
 napoleon_include_private_with_doc = False
@@ -62,15 +62,6 @@ napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_type_aliases = None
 
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3/", None),
-    "pandas": ("https://pandas.pydata.org/pandas-docs/stable", None),
-    "numpy": ("https://numpy.org/doc/stable", None),
-    "dask": ("https://docs.dask.org/en/latest", None),
-    "xarray": ("https://docs.xarray.dev/en/latest/", None),
-    "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
-    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None)
-}
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -88,7 +79,12 @@ html_theme = "sphinx_book_theme"
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
-    "sphinx": ("https://www.sphinx-doc.org/en/stable/", None),
+    "pandas": ("https://pandas.pydata.org/pandas-docs/stable", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "dask": ("https://docs.dask.org/en/latest", None),
+    "xarray": ("https://docs.xarray.dev/en/latest/", None),
+    "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
+    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None)
 }
 
 html_theme_options = {
