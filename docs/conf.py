@@ -63,8 +63,6 @@ intersphinx_mapping = {
 }
 
 html_theme_options = {
-    'logo_only': False,
-    'display_version': True,
     'navigation_depth': 4,  # FIXME: doesn't work as expeted: should expand side menu
     'collapse_navigation': False # FIXME: same as above
 }
