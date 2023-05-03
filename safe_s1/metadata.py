@@ -310,7 +310,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        datatree.Datatree
+        datatree.datatree
             Contains data from the reader
         """
         return self.dt
@@ -620,8 +620,8 @@ class Sentinel1Reader:
 
         Returns
         -------
-        pandas.Dataframe
-            with columns:
+        pandas.core.frame.DataFrame
+            Columns:
                 * index         : file number, extracted from the filename.
                 * dsid          : dataset id, compatible with gdal sentinel1 driver ('SENTINEL1_DS:/path/file.SAFE:WV_012')
                 * polarization  : polarization name.
