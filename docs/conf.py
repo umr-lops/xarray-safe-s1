@@ -24,7 +24,8 @@ extensions = [
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
     'nbsphinx',
-    'jupyter_sphinx'
+    'jupyter_sphinx',
+    'sphinx.ext.napoleon'
 ]
 
 extlinks = {
@@ -34,6 +35,10 @@ extlinks = {
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
+
+html_static_path = ['_static']
+
+html_style = 'css/xsar.css'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
