@@ -104,7 +104,7 @@ class Sentinel1Reader:
 
         Parameters
         ----------
-        resolution: None, number, str or dict
+        resolution: None, numbers.Number, str or dict
         resampling: rasterio.enums.Resampling
 
         Returns
@@ -632,7 +632,7 @@ class Sentinel1Reader:
 
         See Also
         --------
-        self.files
+        Sentinel1Reader.files
 
         """
         if self._safe_files is None:
@@ -661,7 +661,7 @@ class Sentinel1Reader:
 
         See Also
         --------
-        self.safe_files
+        Sentinel1Reader.safe_files
         """
         return self.safe_files[self.safe_files['dsid'] == self.name]
 
