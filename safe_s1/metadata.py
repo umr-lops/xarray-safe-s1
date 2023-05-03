@@ -310,7 +310,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        datatree.datatree
+        datatree.datatree.Datatree
             Contains data from the reader
         """
         return self.dt
