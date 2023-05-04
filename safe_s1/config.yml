@@ -1,0 +1,3 @@
+# default data paths for tests
+product_paths:
+  - 'S1A_IW_GRDH_1SDV_20170907T103020_20170907T103045_018268_01EB76_Z010.SAFE'

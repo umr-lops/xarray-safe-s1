@@ -38,3 +38,11 @@ Developement  installation
     git config --local include.path ../.gitconfig
     pip install -e .
     pip install -r requirements.txt
+
+Pytest configuration
+....................
+
+Pytest uses a default configuration file (`config.yml`) in which we can found products paths to test.
+This configuration can be superseded by adding a local config file on the home directory :
+(`~/xarray-safe-s1/localconfig.yml`).
+In this file, testing files can be listed in the var `product_paths`.
