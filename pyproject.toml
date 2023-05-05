@@ -17,6 +17,7 @@ dependencies = [
     "shapely",
     "pyproj",
     "dask",
+    "aiohttp",
 ]
 readme = "README.md"
 dynamic = ["version"]
