@@ -1,4 +1,6 @@
-![Install test](https://github.com/umr-lops/xsar/actions/workflows/install-test.yml/badge.svg)
+
+[![Documentation Status](https://readthedocs.org/projects/xarray-safe-s1/badge/?version=latest)](https://xarray-safe-s1.readthedocs.io/en/latest/?badge=latest)
+
 # xarray-safe-s1
 
 Xarray Sentinel1 python SAFE files reader
