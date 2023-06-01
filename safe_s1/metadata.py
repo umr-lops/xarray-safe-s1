@@ -52,7 +52,12 @@ class Sentinel1Reader:
         )
 
         self.manifest = 'manifest.safe'
-        self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes')
+        if 'SLC' in self.path or 'GRD' in self.path:
+            self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes_slcgrd')
+        elif 'SL2' in self.path:
+            self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes_sl2')
+        else:
+            raise Exception('case not handled')
 
         self._safe_files = None
         self._multidataset = False
