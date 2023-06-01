@@ -149,6 +149,7 @@ xpath_mappings = {
         'stop_date': (date_converter, '//safe:acquisitionPeriod/safe:stopTime'),
         'aux_cal': (scalar,
                     '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        'aux_cal_sl2': (scalar,'//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'annotation_files': (
             normpath, '/xfdu:XFDU/dataObjectSection/*[@repID="s1Level1ProductSchema"]/byteStream/fileLocation/@href'),
         'measurement_files': (
@@ -710,7 +711,7 @@ def geolocation_grid(line, sample, values):
 # the key is the variable name, and the value is a python structure,
 # where leaves are jmespath in xpath_mappings
 compounds_vars = {
-    'safe_attributes': {
+    'safe_attributes_slcgrd': {
         'ipf_version': 'manifest.ipf_version',
         'swath_type': 'manifest.swath_type',
         'polarizations': 'manifest.polarizations',
@@ -721,6 +722,18 @@ compounds_vars = {
         'stop_date': 'manifest.stop_date',
         'footprints': 'manifest.footprints',
         'aux_cal': 'manifest.aux_cal'
+    },
+    'safe_attributes_sl2': {
+        'ipf_version': 'manifest.ipf_version',
+        'swath_type': 'manifest.swath_type',
+        'polarizations': 'manifest.polarizations',
+        'product_type': 'manifest.product_type',
+        'mission': 'manifest.mission',
+        'satellite': 'manifest.satellite',
+        'start_date': 'manifest.start_date',
+        'stop_date': 'manifest.stop_date',
+        'footprints': 'manifest.footprints',
+        'aux_cal_sl2': 'manifest.aux_cal_sl2'
     },
     'files': {
         'func': df_files,
