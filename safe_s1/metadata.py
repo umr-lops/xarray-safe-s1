@@ -52,7 +52,12 @@ class Sentinel1Reader:
         )
 
         self.manifest = 'manifest.safe'
-        self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes')
+        if 'SLC' in self.path or 'GRD' in self.path:
+            self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes_slcgrd')
+        elif 'SL2' in self.path:
+            self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes_sl2')
+        else:
+            raise Exception('case not handled')
 
         self._safe_files = None
         self._multidataset = False
@@ -574,7 +579,7 @@ class Sentinel1Reader:
         for pol_code, xml_file in self.files['noise'].items():
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
-            if self.product == 'SLC':
+            if self.product == 'SLC' or self.product=='SL2':
                 noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc')
                 history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc', describe=True))
             else:
