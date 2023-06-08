@@ -102,6 +102,7 @@ class Sentinel1Reader:
                 'noise_range_raw': self.get_noise_range_raw,
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
+            assert self.dt==self.datatree
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """
