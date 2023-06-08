@@ -539,7 +539,7 @@ def image(product_type, line_time_range, line_size, sample_size, incidence_angle
     -------
     xarray.Dataset
     """
-    if product_type == 'SLC':
+    if product_type == 'SLC' or product_type == 'SL2':
         pixel_sample_m = rangePixelSpacing / np.sin(np.radians(incidence_angle_mid_swath))
     else:
         pixel_sample_m = rangePixelSpacing

@@ -102,6 +102,7 @@ class Sentinel1Reader:
                 'noise_range_raw': self.get_noise_range_raw,
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
+            assert self.dt==self.datatree
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """
@@ -579,7 +580,7 @@ class Sentinel1Reader:
         for pol_code, xml_file in self.files['noise'].items():
             pol = os.path.basename(xml_file).split('-')[4].upper()
             pols.append(pol)
-            if self.product == 'SLC' or self.product=='SL2':
+            if self.product == 'SLC' or self.product == 'SL2':
                 noise_lut_azi_raw_ds = self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc')
                 history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_azi_raw_slc', describe=True))
             else:
