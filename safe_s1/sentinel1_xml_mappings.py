@@ -30,7 +30,7 @@ scalar = lambda x: x[0]
 scalar_int = lambda x: int(x[0])
 scalar_float = lambda x: float(x[0])
 date_converter = lambda x: datetime.strptime(x[0], '%Y-%m-%dT%H:%M:%S.%f')
-datetime64_array = lambda x: np.array([np.datetime64(date_converter([sx])) for sx in x])
+datetime64_array = lambda x: np.array([np.datetime64(date_converter([sx])).astype("datetime64[ns]") for sx in x])
 int_1Darray_from_string = lambda x: np.fromstring(x[0], dtype=int, sep=' ')
 float_2Darray_from_string_list = lambda x: np.vstack([np.fromstring(e, dtype=float, sep=' ') for e in x])
 list_of_float_1D_array_from_string = lambda x: [np.fromstring(e, dtype=float, sep=' ') for e in x]
