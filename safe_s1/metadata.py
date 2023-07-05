@@ -72,14 +72,15 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
     new_line = xr.DataArray(
         int(low_pass['line'].isel(line=low_pass.sizes['line'] // 2)) + np.arange(-Np['line'] // 2,
                                                                                  Np['line'] // 2) * float(
-            posting['line'] / spacing['line']), dims='azimuth')
+            posting['line'] / spacing['line']), dims='line') # previous azimuth
     new_sample = xr.DataArray(
         int(low_pass['sample'].isel(sample=low_pass.sizes['sample'] // 2)) + np.arange(-Np['sample'] // 2,
                                                                                        Np['sample'] // 2) * float(
-            posting['sample'] / spacing['sample']), dims='range')
-    decimated = low_pass.interp(sample=new_sample, line=new_line, assume_sorted=True).rename('sigma0')
+            posting['sample'] / spacing['sample']), dims='sample') # previous range
+    decimated = low_pass.interp(sample=new_sample, line=new_line, assume_sorted=True).rename('digital_number')
 
-    decimated = decimated.drop_vars(['line', 'sample'])
+    # decimated = decimated.drop_vars(['line', 'sample'])
+    # decimated = decimated.swap_dims({'azimuth':'line','range':'sample'})
     decimated.attrs.update(tile.attrs)
 
     range_spacing = xr.DataArray(posting['sample'], attrs={'units': 'm', 'long_name': 'ground range spacing'},
@@ -91,7 +92,9 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
     # decimated = xr.merge(
     #     [decimated.to_dataset(), range_spacing.to_dataset(),
     #      azimuth_spacing.to_dataset()])
-    decimated = decimated.transpose('azimuth', 'range', ...)
+    # decimated = decimated.transpose('azimuth', 'range', ...)
+    decimated = decimated.transpose('line', 'sample', ...)
+    print('decimated',decimated)
     return decimated,range_spacing.to_dataset(),azimuth_spacing.to_dataset()
 def gaussian_kernel(width, spacing, truncate=3.):
     """
@@ -318,7 +321,7 @@ class Sentinel1Reader:
         if resolution is None:
             # using tiff driver: need to read individual tiff and concat them
             # riofiles['rio'] is ordered like self.sar_meta.manifest_attrs['polarizations']
-            dn = self.basic_open_tiff(files_measurement,map_dims)
+            dn = self.basic_open_tiff(files_measurement,map_dims).chunk(chunks)
         else:
             if not isinstance(resolution, dict):
                 if isinstance(resolution, str) and resolution.endswith('m'):
