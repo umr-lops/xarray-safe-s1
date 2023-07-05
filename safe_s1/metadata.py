@@ -23,7 +23,7 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
     """
     Compute low resolution tiles on defined ground spacing based on full resolution SLC tile.
     Code example:
-    tiles = get_tiles_from_L1B_SLC(L1B)
+    tile = dn.sel(pol='vv')
     mytile = tiles[0]
     spacing = {'sample':mytile['sampleSpacing']/np.sin(np.radians(mytile['incidence'])), 'line':mytile['lineSpacing']}
     posting = {'sample':400,'line':400}
@@ -31,7 +31,7 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
     low_res_tile = compute_low_res_tiles(mytile, spacing = spacing, posting = posting, tile_width = tile_width)
 
     Args:
-        tile (xarray.DataArray) : A tile dataArray (list element generated with get_tiles_from_L1B_SLC()).
+        tile (xarray.DataArray) : dataArray containing digital number (2D matrix) for a given channel (ie polarization)
         spacing (dict): GROUND spacing of provided tile. {name of dimension (str): spacing in [m] (float)}.
         posting (dict): Desired output posting. {name of dimension (str): spacing in [m] (float)}.
         tile_width (dict): form {name of dimension (str): width in [m] (float)}. Desired width of the output tile (should be smaller or equal than provided data)
@@ -56,7 +56,6 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
         raise ValueError('Unknown window: {}'.format(window))
     swap_dims = {d: d + '_' for d in resolution.keys()}
     kernel_filter = kernel_filter.rename(swap_dims)
-
     low_pass = xr.apply_ufunc(fftconvolve, tile.where(mask, 0.), kernel_filter,
                               input_core_dims=[resolution.keys(), swap_dims.values()], vectorize=True,
                               output_core_dims=[resolution.keys()], kwargs={'mode': 'same'}, dask='allowed')
@@ -79,27 +78,21 @@ def compute_low_res_tiles(tile, spacing, posting, tile_width, resolution=None, w
                                                                                        Np['sample'] // 2) * float(
             posting['sample'] / spacing['sample']), dims='range')
     decimated = low_pass.interp(sample=new_sample, line=new_line, assume_sorted=True).rename('sigma0')
-    corner_lat = tile['corner_latitude'].interp(c_sample=decimated['sample'][[0, -1]],
-                                                c_line=decimated['line'][[0, -1]]).rename(
-        {'range': 'c_range', 'azimuth': 'c_azimuth'})
-    corner_lon = tile['corner_longitude'].interp(c_sample=decimated['sample'][[0, -1]],
-                                                 c_line=decimated['line'][[0, -1]]).rename(
-        {'range': 'c_range', 'azimuth': 'c_azimuth'})
+
     decimated = decimated.drop_vars(['line', 'sample'])
     decimated.attrs.update(tile.attrs)
-    corner_lat = corner_lat.drop_vars(['line', 'sample', 'c_line', 'c_sample'])
-    corner_lon = corner_lon.drop_vars(['line', 'sample', 'c_line', 'c_sample'])
+
     range_spacing = xr.DataArray(posting['sample'], attrs={'units': 'm', 'long_name': 'ground range spacing'},
                                  name='range_spacing')
     azimuth_spacing = xr.DataArray(posting['line'], attrs={'units': 'm', 'long_name': 'azimuth spacing'},
                                    name='azimuth_spacing')
-    added_variables = [tile[v].to_dataset() for v in
-                       ['incidence', 'ground_heading', 'land_flag']]  # add variables from L1B to output
-    decimated = xr.merge(
-        [decimated.to_dataset(), corner_lat.to_dataset(), corner_lon.to_dataset(), range_spacing.to_dataset(),
-         azimuth_spacing.to_dataset(), *added_variables])
-    decimated = decimated.transpose('azimuth', 'range', 'c_azimuth', 'c_range', ...)
-    return decimated
+    # added_variables = [tile[v].to_dataset() for v in
+    #                    ['incidence', 'ground_heading', 'land_flag']]  # add variables from L1B to output
+    # decimated = xr.merge(
+    #     [decimated.to_dataset(), range_spacing.to_dataset(),
+    #      azimuth_spacing.to_dataset()])
+    decimated = decimated.transpose('azimuth', 'range', ...)
+    return decimated,range_spacing.to_dataset(),azimuth_spacing.to_dataset()
 def gaussian_kernel(width, spacing, truncate=3.):
     """
     Compute a Gaussian kernel for filtering. The width correspond to the wavelength that is needed to be kept. The standard deviation of the gaussian has to be width/(2 pi)
@@ -222,7 +215,28 @@ class Sentinel1Reader:
             self.dt = datatree.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
 
+    def basic_open_tiff(self,files_measurement,map_dims):
+        tmplist = []
+        for f, pol in zip(files_measurement, self.manifest_attrs['polarizations']):
+            aa = tifffile.imread(f, aszarr=True)
+            bb = zarr.open(aa, mode='r')
+            cc = da.from_array(bb)
+            cc2 = cc.reshape((1, cc.shape[0], cc.shape[1]))
+            dimss = tuple(map_dims.keys())
+            dd = xr.DataArray(cc2, dims=dimss, coords={'pol': [pol]})
+            tmplist.append(dd)
 
+        # dn = xr.concat(tmplist,dim='pol').assign_coords(band=np.arange(len(self.manifest_attrs['polarizations'])) + 1)
+        # dn = xr.merge(tmplist)
+        # dn = xr.combine_by_coords(tmplist)
+        dn = xr.combine_nested(tmplist, concat_dim='pol')
+        # set dimensions names
+        # dn = dn.rename(dict(zip(map_dims.values(), map_dims.keys())))
+
+        # create coordinates from dimension index (because of parse_coordinates=False)
+        dn = dn.assign_coords({'line': dn.line, 'sample': dn.sample})
+        dn = dn.drop_vars('spatial_ref', errors='ignore')
+        return dn
 
 
     def load_digital_number(self, resolution=None, chunks=None):
@@ -295,41 +309,16 @@ class Sentinel1Reader:
 
         # arbitrary rio object, to get shape, etc ... (will not be used to read data)
         #rio = rasterio.open(files_measurement[0])
-        metaobjzarr = tifffile.imread(files_measurement[0], aszarr=True) # lazy load to get shape
+        metaobjzarr = zarr.open(tifffile.imread(files_measurement[0], aszarr=True), mode='r') # lazy load to get shape
         chunks['pol'] = 1
         # sort chunks keys like map_dims
         chunks = dict(sorted(chunks.items(), key=lambda pair: list(map_dims.keys()).index(pair[0])))
-        chunks_rio = {map_dims[d]: chunks[d] for d in map_dims.keys()}
+        # chunks_rio = {map_dims[d]: chunks[d] for d in map_dims.keys()}
         res = None
         if resolution is None:
             # using tiff driver: need to read individual tiff and concat them
             # riofiles['rio'] is ordered like self.sar_meta.manifest_attrs['polarizations']
-            tmplist = []
-            for f, pol in zip(files_measurement, self.manifest_attrs['polarizations']):
-
-                aa = tifffile.imread(f, aszarr=True)
-                bb = zarr.open(aa, mode='r')
-                cc = da.from_array(bb)
-                cc2 = cc.reshape((1,cc.shape[0],cc.shape[1]))
-                print('cc2',cc2)
-                dimss = tuple(map_dims.keys())
-                print("dimss",dimss)
-                dd = xr.DataArray(cc2,dims=dimss, coords={'pol': [pol]})
-                tmplist.append(dd)
-
-
-            #dn = xr.concat(tmplist,dim='pol').assign_coords(band=np.arange(len(self.manifest_attrs['polarizations'])) + 1)
-            #dn = xr.merge(tmplist)
-            #dn = xr.combine_by_coords(tmplist)
-            dn = xr.combine_nested(tmplist,concat_dim='pol')
-            print('dn',dn)
-            print('map_dims')
-            # set dimensions names
-            #dn = dn.rename(dict(zip(map_dims.values(), map_dims.keys())))
-
-            # create coordinates from dimension index (because of parse_coordinates=False)
-            dn = dn.assign_coords({'line': dn.line, 'sample': dn.sample})
-            dn = dn.drop_vars('spatial_ref', errors='ignore')
+            dn = self.basic_open_tiff(files_measurement,map_dims)
         else:
             if not isinstance(resolution, dict):
                 if isinstance(resolution, str) and resolution.endswith('m'):
@@ -359,39 +348,20 @@ class Sentinel1Reader:
             else:
                 window_az = None
                 window_ra = None
-
-            dn = xr.concat(
-                [
-                    xr.DataArray(
-                        da.from_array(
-                            # rasterio.open(f).read(
-                            #     out_shape=out_shape_pol,
-                            #     resampling=resampling,
-                            #     window=window
-                            # ),
-                            tifffile.imread(f, aszarr=True),
-                            chunks=chunks_rio
-                        ),
-                        dims=tuple(map_dims.keys()), coords={'pol': [pol]}
-                    ) for f, pol in
-                    zip(files_measurement, self.manifest_attrs['polarizations'])
-                ],
-                'pol'
-            ).chunk(chunks)
-            spacing = self.datatree['image'].ds['']
-            posting = {'sample':resolution['sample'],'line':resolution['sample']} # here we considere that posting and resolution are equal, to keep interfaces, it can be revised in the future
+            dn = self.basic_open_tiff(files_measurement, map_dims).chunk(chunks)
+            spacing = {'line':float(self.datatree['image'].ds['azimuthPixelSpacing']),
+                       'sample':float(self.datatree['image'].ds['groundRangePixelSpacing'])}
+            posting = {'sample':resolution['sample'],
+                       'line':resolution['line']} # here we considere that posting and resolution are equal, to keep interfaces, it can be revised in the future
+            # info: in xsarslc resolution = 2*posting, may be future evolution will introduce posting as optinal argument
             tile_width = {'sample':metaobjzarr.shape[1],'line':metaobjzarr.shape[0]}
-            pdb.set_trace()
-            dn = compute_low_res_tiles(dn, spacing, posting, tile_width, resolution=resolution, window='GAUSSIAN')
-            pdb.set_trace()
-            # # create coordinates at box center
-            # translate = Affine.translation((resolution['sample'] - 1) / 2, (resolution['line'] - 1) / 2)
-            # scale = Affine.scale(
-            #     rio.width // resolution['sample'] * resolution['sample'] / out_shape[1],
-            #     rio.height // resolution['line'] * resolution['line'] / out_shape[0])
-            # sample, _ = translate * scale * (dn.sample, 0)
-            # _, line = translate * scale * (0, dn.line)
-            # dn = dn.assign_coords({'line': line, 'sample': sample})
+
+            channels = []
+            for pol in dn.pol:
+                dn_channel_sep,range_spacing_ds,az_spacing_ds = compute_low_res_tiles(dn.sel(pol=pol), spacing,
+                                                       posting, tile_width, resolution=None, window='GAUSSIAN')
+                channels.append(dn_channel_sep)
+            dn = xr.combine_nested(channels, concat_dim='pol')
 
         # for GTiff driver, pols are already ordered. just rename them
         dn = dn.assign_coords(pol=self.manifest_attrs['polarizations'])
