@@ -147,8 +147,10 @@ xpath_mappings = {
         'satellite': (scalar, '//safe:platform/safe:number'),
         'start_date': (date_converter, '//safe:acquisitionPeriod/safe:startTime'),
         'stop_date': (date_converter, '//safe:acquisitionPeriod/safe:stopTime'),
-        'aux_cal': (scalar,
-                    '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        
+        'aux_cal': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        'aux_pp1': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_PP1"]/@name'),
+
         'aux_cal_sl2': (scalar,'//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'annotation_files': (
             normpath, '/xfdu:XFDU/dataObjectSection/*[@repID="s1Level1ProductSchema"]/byteStream/fileLocation/@href'),
@@ -299,7 +301,17 @@ xpath_mappings = {
         'fmrate_azimuthFmRatePolynomial': (
             list_of_float_1D_array_from_string,
             '//product/generalAnnotation/azimuthFmRateList/azimuthFmRate/azimuthFmRatePolynomial'),
-
+        
+        'ap_azimuthTime': (
+            datetime64_array, '/product/antennaPattern/antennaPatternList/antennaPattern/azimuthTime'),        
+        'ap_roll' : (float_array, '/product/antennaPattern/antennaPatternList/antennaPattern/roll'),
+        'ap_swath' : (lambda x: np.array(x), '/product/antennaPattern/antennaPatternList/antennaPattern/swath'),
+        
+        'ap_elevationAngle': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationAngle'),        
+        'ap_slantRangeTime': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/slantRangeTime'),        
+      
     },
     'xsd': {'all': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
             'names': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
@@ -683,6 +695,7 @@ def doppler_centroid_estimates(nb_dcestimate,
                                                           'source': xpath_mappings['annotation']['dc_rmserrAboveThres'][
                                                               1]},
                                                       coords={'azimuthTime': dc_azimuth_time})
+    
     return ds
 
 
@@ -705,6 +718,52 @@ def geolocation_grid(line, sample, values):
     values = np.reshape(values, shape)
     return xr.DataArray(values, dims=['line', 'sample'], coords={'line': line, 'sample': sample})
 
+def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime):
+    """
+
+    Parameters
+    ----------
+    ap_swath
+    ap_roll
+    ap_azimuthTime
+    
+    Returns
+    -------
+    xarray.DataSet
+    """   
+    # Fonction to convert string 'EW1' ou 'IW3' as int
+    def convert_to_int(swath):
+        return int(swath[-1])
+    vectorized_convert = np.vectorize(convert_to_int)
+    swathNumber = vectorized_convert(ap_swath)
+
+    # Max length for a swath 
+    dim_0 = max(np.bincount(swathNumber))
+
+    swath_number_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
+    roll_angle_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
+    azimuthTime_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
+
+    # Filling array for each subswath
+    for i, swath_number in enumerate(np.unique(swathNumber)):
+        length_dim0 = len(ap_roll[swathNumber == swath_number])
+        swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
+        roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]
+        azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
+    azimuthTime_2d = azimuthTime_2d.astype('datetime64[ns]')
+
+    # return a xarray.DataSet
+    ds = xr.Dataset({
+        'swath' : (['swath_nb', 'dim_0'],swath_number_2d),
+        'roll' : (['swath_nb', 'dim_0'],roll_angle_2d),
+        'azimuthTime' : (['swath_nb', 'dim_0'],azimuthTime_2d)
+        },
+        coords={'swath_nb': np.unique(swathNumber)}
+    )
+    return ds 
+
+
+
 
 # dict of compounds variables.
 # compounds variables are variables composed of several variables.
@@ -721,7 +780,8 @@ compounds_vars = {
         'start_date': 'manifest.start_date',
         'stop_date': 'manifest.stop_date',
         'footprints': 'manifest.footprints',
-        'aux_cal': 'manifest.aux_cal'
+        'aux_cal': 'manifest.aux_cal',
+        'aux_pp1': 'manifest.aux_pp1'
     },
     'safe_attributes_sl2': {
         'ipf_version': 'manifest.ipf_version',
@@ -844,4 +904,9 @@ compounds_vars = {
 
                  ),
     },
+    'antennaPattern': {
+        'func': antenna_pattern,
+        'args': ('annotation.ap_swath','annotation.ap_roll','annotation.ap_azimuthTime'
+        )
+    }
 }

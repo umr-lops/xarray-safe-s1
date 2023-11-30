@@ -100,6 +100,7 @@ class Sentinel1Reader:
                 'calibration_luts': self.get_calibration_luts,
                 'noise_azimuth_raw': self.get_noise_azi_raw,
                 'noise_range_raw': self.get_noise_range_raw,
+                'antenna_pattern':self.antenna_pattern
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
@@ -495,6 +496,13 @@ class Sentinel1Reader:
             bursts.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'bursts_grd',
                                                                        describe=True)
             return bursts
+
+    @property
+    def antenna_pattern(self):
+        ds =  self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antennaPattern')
+        ds.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antennaPattern',
+                                                               describe=True)
+        return ds
 
     @property
     def multidataset(self):
