@@ -308,10 +308,16 @@ xpath_mappings = {
         'ap_swath' : (lambda x: np.array(x), '/product/antennaPattern/antennaPatternList/antennaPattern/swath'),
         
         'ap_elevationAngle': (
-            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationAngle'),        
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationAngle'), 
+        'ap_incidenceAngle': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/incidenceAngle'), 
         'ap_slantRangeTime': (
             list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/slantRangeTime'),        
-      
+        'ap_terrainHeight': (
+            float_array, '/product/antennaPattern/antennaPatternList/antennaPattern/terrainHeight'),        
+        'ap_elevationPattern' : (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationPattern'),        
+        
     },
     'xsd': {'all': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
             'names': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
@@ -718,7 +724,7 @@ def geolocation_grid(line, sample, values):
     values = np.reshape(values, shape)
     return xr.DataArray(values, dims=['line', 'sample'], coords={'line': line, 'sample': sample})
 
-def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime):
+def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime,ap_terrainHeight,ap_elevationAngle,ap_elevationPattern,ap_incidenceAngle,ap_slantRangeTime):
     """
 
     Parameters
@@ -737,31 +743,67 @@ def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime):
     vectorized_convert = np.vectorize(convert_to_int)
     swathNumber = vectorized_convert(ap_swath)
 
-    # Max length for a swath 
     dim_0 = max(np.bincount(swathNumber))
+    max_length = max(array.shape[0] for array in ap_elevationAngle)
+    dim_1 = max_length
+
+    # Create 2Ds arrays 
+    elevAngle2d = np.full((len(ap_elevationAngle), max_length), np.nan)  
+    gain2d = np.full((len(ap_elevationPattern), max_length), np.nan)  
+    slantRangeTime2d = np.full((len(ap_slantRangeTime), max_length), np.nan)
+    incAngle2d = np.full((len(ap_incidenceAngle), max_length), np.nan)
+
+    for i in range(len(ap_elevationAngle)):
+        elevAngle2d[i, :ap_elevationAngle[i].shape[0]] = ap_elevationAngle[i]
+        gain2d[i, :ap_elevationAngle[i].shape[0]] = np.sqrt(ap_elevationPattern[i][::2]**2+ap_elevationPattern[i][1::2]**2)
+        slantRangeTime2d[i, :ap_slantRangeTime[i].shape[0]] = ap_slantRangeTime[i]
+        incAngle2d[i, :ap_incidenceAngle[i].shape[0]] = ap_incidenceAngle[i]
+
 
     swath_number_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
     roll_angle_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
     azimuthTime_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
+    terrainHeight_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
 
-    # Filling array for each subswath
+    slantRangeTime_2d = np.full((len(np.unique(swathNumber)), dim_1), np.nan)
+
+    elevationAngle_3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
+    incidenceAngle_3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
+    gain3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
+
     for i, swath_number in enumerate(np.unique(swathNumber)):
-        length_dim0 = len(ap_roll[swathNumber == swath_number])
-        swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
-        roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]
-        azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
+        for j in range(0, max_length):
+            length_dim0 = len(ap_roll[swathNumber == swath_number])
+            swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
+            roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]
+            azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
+            terrainHeight_2d[i, :length_dim0] = ap_terrainHeight[swathNumber == swath_number]
+            elevationAngle_3d[i,:length_dim0,j]=elevAngle2d[swathNumber == swath_number,j]
+            incidenceAngle_3d[i,:length_dim0,j]=incAngle2d[swathNumber == swath_number,j]
+            gain3d[i,:length_dim0,j]=gain2d[swathNumber == swath_number,j]
+        slantRangeTime_2d[i, :] = slantRangeTime2d[i, :]
+
+
     azimuthTime_2d = azimuthTime_2d.astype('datetime64[ns]')
 
-    # return a xarray.DataSet
+    # return a Dataset
     ds = xr.Dataset({
-        'swath' : (['swath_nb', 'dim_0'],swath_number_2d),
-        'roll' : (['swath_nb', 'dim_0'],roll_angle_2d),
-        'azimuthTime' : (['swath_nb', 'dim_0'],azimuthTime_2d)
-        },
+        'slantRangeTime' : (['swath_nb', 'dim_1'], slantRangeTime_2d),
+        'swath' : (['swath_nb', 'dim_0'], swath_number_2d),
+        'roll' : (['swath_nb', 'dim_0'], roll_angle_2d),
+        'azimuthTime' : (['swath_nb', 'dim_0'], azimuthTime_2d),
+        'terrainHeight' : (['swath_nb', 'dim_0'], terrainHeight_2d),
+        'elevationAngle' : (['swath_nb', 'dim_0','dim_1'],elevationAngle_3d),
+        'incidenceAngle' : (['swath_nb', 'dim_0','dim_1'],incidenceAngle_3d),
+        'gain' : (['swath_nb', 'dim_0','dim_1'],gain3d),
+        },    
         coords={'swath_nb': np.unique(swathNumber)}
     )
+    ds.attrs["dim_0"] = "max dimension of azimuthTime for a swath"
+    ds.attrs["dim_1"] = "max dimension of slantRangeTime for a swath"
+    ds.attrs["comment"] = "for example, if swath Y is smaller than swath X, user has to remove nan to get the dims of the swath"
+    
     return ds 
-
 
 
 
@@ -906,7 +948,9 @@ compounds_vars = {
     },
     'antennaPattern': {
         'func': antenna_pattern,
-        'args': ('annotation.ap_swath','annotation.ap_roll','annotation.ap_azimuthTime'
+        'args': ('annotation.ap_swath','annotation.ap_roll','annotation.ap_azimuthTime','annotation.ap_terrainHeight',
+                 'annotation.ap_elevationAngle','annotation.ap_elevationPattern','annotation.ap_incidenceAngle',
+                 'annotation.ap_slantRangeTime'
         )
     }
 }
