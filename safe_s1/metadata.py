@@ -100,7 +100,8 @@ class Sentinel1Reader:
                 'calibration_luts': self.get_calibration_luts,
                 'noise_azimuth_raw': self.get_noise_azi_raw,
                 'noise_range_raw': self.get_noise_range_raw,
-                'antenna_pattern':self.antenna_pattern
+                'antenna_pattern':self.antenna_pattern,
+                'swath_merging': self.swath_merging
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
@@ -499,8 +500,15 @@ class Sentinel1Reader:
 
     @property
     def antenna_pattern(self):
-        ds =  self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antennaPattern')
-        ds.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antennaPattern',
+        ds =  self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antenna_pattern')
+        ds.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'antenna_pattern',
+                                                               describe=True)
+        return ds
+
+    @property
+    def swath_merging(self):
+        ds =  self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'swath_merging')
+        ds.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'swath_merging',
                                                                describe=True)
         return ds
 

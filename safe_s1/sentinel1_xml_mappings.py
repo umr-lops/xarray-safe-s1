@@ -318,7 +318,15 @@ xpath_mappings = {
         'ap_elevationPattern' : (
             list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationPattern'),        
         
-    },
+        'sm_nbPerSwat': (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/@count'),
+        'sm_swath' : (lambda x: np.array(x),     '/product/swathMerging/swathMergeList/swathMerge/swath'),
+        'sm_azimuthTime' : (datetime64_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/azimuthTime'),      
+        'sm_firstAzimuthLine' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/firstAzimuthLine'),      
+        'sm_lastAzimuthLine' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/lastAzimuthLine'),      
+        'sm_firstRangeSample' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/firstRangeSample'),      
+        'sm_lastRangeSample' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/lastRangeSample'),      
+
+    },   
     'xsd': {'all': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
             'names': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
             'sensingtime': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/sensingTime')
@@ -732,6 +740,11 @@ def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime,ap_terrainHeight,ap_elevatio
     ap_swath
     ap_roll
     ap_azimuthTime
+    ap_terrainHeight
+    ap_elevationAngle
+    ap_elevationPattern
+    ap_incidenceAngle
+    ap_slantRangeTime
     
     Returns
     -------
@@ -805,7 +818,42 @@ def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime,ap_terrainHeight,ap_elevatio
     
     return ds 
 
+def swath_merging(sm_swath,sm_nbPerSwat,sm_azimuthTime,sm_firstAzimuthLine,sm_lastAzimuthLine,sm_firstRangeSample,sm_lastRangeSample):
+    """
 
+    Parameters
+    ----------
+    sm_swath
+    sm_nbPerSwat
+    sm_azimuthTime
+    sm_firstAzimuthLine
+    sm_lastAzimuthLine
+    sm_firstRangeSample
+    sm_lastRangeSample
+    
+    Returns
+    -------
+    xarray.DataSet
+    """   
+    # Fonction to convert string 'EW1' ou 'IW3' as int
+    def convert_to_int(swath):
+        return int(swath[-1])
+    vectorized_convert = np.vectorize(convert_to_int)
+    repeated_swaths = np.repeat(sm_swath, sm_nbPerSwat)
+    swathNumber = vectorized_convert(repeated_swaths)
+    
+    ds = xr.Dataset({
+        'swaths' : (['dim_0'], swathNumber),
+        'azimuthTime' : (['dim_0'], sm_azimuthTime),
+        'firstAzimuthLine' : (['dim_0'], sm_firstAzimuthLine),
+        'lastAzimuthLine' : (['dim_0'], sm_lastAzimuthLine),
+        'firstRangeSample' : (['dim_0'], sm_firstRangeSample),
+        'lastRangeSample' : (['dim_0'], sm_lastRangeSample),
+        },    
+    )
+    ds.attrs["comment"] = "the order of information is preserved in the dataset"
+
+    return ds
 
 # dict of compounds variables.
 # compounds variables are variables composed of several variables.
@@ -946,11 +994,17 @@ compounds_vars = {
 
                  ),
     },
-    'antennaPattern': {
+    'antenna_pattern': {
         'func': antenna_pattern,
         'args': ('annotation.ap_swath','annotation.ap_roll','annotation.ap_azimuthTime','annotation.ap_terrainHeight',
                  'annotation.ap_elevationAngle','annotation.ap_elevationPattern','annotation.ap_incidenceAngle',
                  'annotation.ap_slantRangeTime'
         )
-    }
+    },
+    'swath_merging': {
+        'func': swath_merging,
+        'args': ('annotation.sm_swath','annotation.sm_nbPerSwat','annotation.sm_azimuthTime','annotation.sm_firstAzimuthLine',
+                 'annotation.sm_lastAzimuthLine','annotation.sm_firstRangeSample','annotation.sm_lastRangeSample'
+        )
+    },
 }
