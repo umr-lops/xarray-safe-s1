@@ -507,7 +507,7 @@ class Sentinel1Reader:
 
     @property
     def swath_merging(self):
-        if self.product.includes('GRD'):
+        if 'GRD' in self.product:
             
             ds =  self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'swath_merging')
             ds.attrs['history'] = self.xml_parser.get_compound_var(self.files['annotation'].iloc[0], 'swath_merging',
