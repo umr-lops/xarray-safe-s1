@@ -118,6 +118,7 @@ def or_ipf28(xpath):
     return xpath
 
 
+
 def list_poly_from_list_string_coords(str_coords_list):
     footprints = []
     for gmlpoly in str_coords_list:
@@ -354,7 +355,10 @@ def noise_lut_range_raw(lines, samples, noiseLuts, azimuthTimes):
     ds['noise_lut'] = xr.DataArray(tmp_noise,
                                    coords={'line': lines, 'sample': samples[0][0:minimum_pts]},
                                    dims=['line', 'sample'])
-    ds['azimuthTime'] = xr.DataArray(azimuthTimes,coords={'line': lines},dims=['line'])
+    try:
+        ds['azimuthTime'] = xr.DataArray(azimuthTimes,coords={'line': lines},dims=['line'])
+    except: #for IPF2.72 for instance there is no azimuthTimes associated to the noise range LUT
+        ds['azimuthTime'] = xr.DataArray(np.ones(len(lines))*np.nan, coords={'line': lines}, dims=['line'])
     # ds['sample'] = xr.DataArray(np.stack(normalized_samples), coords={'lines': lines, 'sample_index': np.arange(minimum_pts)},
     #                             dims=['lines', 'sample_index'])
 
