@@ -188,7 +188,8 @@ xpath_mappings = {
         'sample': (int_1Darray_from_string, '//calibration/calibrationVectorList/calibrationVector[1]/pixel'),
         'sigma0_lut': (
             float_2Darray_from_string_list, '//calibration/calibrationVectorList/calibrationVector/sigmaNought'),
-        'gamma0_lut': (float_2Darray_from_string_list, '//calibration/calibrationVectorList/calibrationVector/gamma')
+        'gamma0_lut': (float_2Darray_from_string_list, '//calibration/calibrationVectorList/calibrationVector/gamma'),
+        'azimuthTime': (datetime64_array, '/calibration/calibrationVectorList/calibrationVector/azimuthTime')
     },
     'noise': {
         'mode': (scalar, '/noise/adsHeader/mode'),
@@ -311,12 +312,14 @@ xpath_mappings = {
 }
 
 
-def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0):
+def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0,azimuth_times):
     ds = xr.Dataset()
     ds['sigma0_lut'] = xr.DataArray(lut_sigma0, dims=['line', 'sample'], coords={'line': line, 'sample': sample},
                                     name='sigma0', attrs={'description': 'look up table sigma0'})
     ds['gamma0_lut'] = xr.DataArray(lut_gamma0, dims=['line', 'sample'], coords={'line': line, 'sample': sample},
                                     name='gamma0', attrs={'description': 'look up table gamma0'})
+    ds['azimuthTime'] = xr.DataArray(azimuth_times, dims=['line'],coords={'line': line},
+                                     attrs={'description': 'azimuth times associated to the signal look up table'})
 
     return ds
 
@@ -757,7 +760,8 @@ compounds_vars = {
     },
     'luts_raw': {
         'func': signal_lut_raw,
-        'args': ('calibration.line', 'calibration.sample', 'calibration.sigma0_lut', 'calibration.gamma0_lut')
+        'args': ('calibration.line', 'calibration.sample', 'calibration.sigma0_lut', 'calibration.gamma0_lut',
+                 'calibration.azimuthTime')
     },
     'noise_lut_range_raw': {
         'func': noise_lut_range_raw,
