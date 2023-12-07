@@ -198,7 +198,8 @@ xpath_mappings = {
                        or_ipf28('/noise/noiseRangeVectorList/noiseRangeVector/pixel')),
             'noiseLut': (
                 lambda x: [np.fromstring(s, dtype=float, sep=' ') for s in x],
-                or_ipf28('/noise/noiseRangeVectorList/noiseRangeVector/noiseRangeLut'))
+                or_ipf28('/noise/noiseRangeVectorList/noiseRangeVector/noiseRangeLut')),
+            'azimuthTime': (datetime64_array, '/noise/noiseRangeVectorList/noiseRangeVector/azimuthTime')
         },
         'azi': {
             'swath': '/noise/noiseAzimuthVectorList/noiseAzimuthVector/swath',
@@ -319,7 +320,7 @@ def signal_lut_raw(line, sample, lut_sigma0, lut_gamma0):
     return ds
 
 
-def noise_lut_range_raw(lines, samples, noiseLuts):
+def noise_lut_range_raw(lines, samples, noiseLuts, azimuthTimes):
     """
 
         Parameters
@@ -330,6 +331,8 @@ def noise_lut_range_raw(lines, samples, noiseLuts):
             arrays of samples. list length is same as samples. each array define samples where lut is defined
         noiseLuts: list of np.ndarray
             arrays of luts. Same structure as samples.
+        azimuthTimes: np.ndarray
+            1D array of azimuth dates associated to each lines of the noise range grid
 
         Returns
         -------
@@ -351,6 +354,7 @@ def noise_lut_range_raw(lines, samples, noiseLuts):
     ds['noise_lut'] = xr.DataArray(tmp_noise,
                                    coords={'line': lines, 'sample': samples[0][0:minimum_pts]},
                                    dims=['line', 'sample'])
+    ds['azimuthTime'] = xr.DataArray(azimuthTimes,coords={'line': lines},dims=['line'])
     # ds['sample'] = xr.DataArray(np.stack(normalized_samples), coords={'lines': lines, 'sample_index': np.arange(minimum_pts)},
     #                             dims=['lines', 'sample_index'])
 
@@ -753,7 +757,7 @@ compounds_vars = {
     },
     'noise_lut_range_raw': {
         'func': noise_lut_range_raw,
-        'args': ('noise.range.line', 'noise.range.sample', 'noise.range.noiseLut')
+        'args': ('noise.range.line', 'noise.range.sample', 'noise.range.noiseLut', 'noise.range.azimuthTime')
     },
     'noise_lut_azi_raw_grd': {
         'func': noise_lut_azi_raw_grd,
