@@ -756,66 +756,81 @@ def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime,ap_terrainHeight,ap_elevatio
     vectorized_convert = np.vectorize(convert_to_int)
     swathNumber = vectorized_convert(ap_swath)
 
-    dim_0 = max(np.bincount(swathNumber))
-    max_length = max(array.shape[0] for array in ap_elevationAngle)
-    dim_1 = max_length
+    dim_azimuthTime = max(np.bincount(swathNumber))
+    dim_slantRangeTime = max(array.shape[0] for array in ap_elevationAngle)
+
+    include_roll = len(ap_roll) != 0
 
     # Create 2Ds arrays 
-    elevAngle2d = np.full((len(ap_elevationAngle), max_length), np.nan)  
-    gain2d = np.full((len(ap_elevationPattern), max_length), np.nan)  
-    slantRangeTime2d = np.full((len(ap_slantRangeTime), max_length), np.nan)
-    incAngle2d = np.full((len(ap_incidenceAngle), max_length), np.nan)
+    elevAngle2d = np.full((len(ap_elevationAngle), dim_slantRangeTime), np.nan)  
+    gain2d = np.full((len(ap_elevationPattern), dim_slantRangeTime), np.nan)  
+    slantRangeTime2d = np.full((len(ap_slantRangeTime), dim_slantRangeTime), np.nan)
+    incAngle2d = np.full((len(ap_incidenceAngle), dim_slantRangeTime), np.nan)
 
+    
     for i in range(len(ap_elevationAngle)):
         elevAngle2d[i, :ap_elevationAngle[i].shape[0]] = ap_elevationAngle[i]
-        gain2d[i, :ap_elevationAngle[i].shape[0]] = np.sqrt(ap_elevationPattern[i][::2]**2+ap_elevationPattern[i][1::2]**2)
+
+        if ap_elevationAngle[i].shape[0] != ap_elevationPattern[i].shape[0] :
+            gain2d[i, :ap_elevationAngle[i].shape[0]] = np.sqrt(ap_elevationPattern[i][::2]**2+ap_elevationPattern[i][1::2]**2)
+        else:
+            #logging.warn("antenna pattern is not given in complex values. You probably use an old file\n" + e) 
+            gain2d[i, :ap_elevationAngle[i].shape[0]] = ap_elevationPattern[i]
+
         slantRangeTime2d[i, :ap_slantRangeTime[i].shape[0]] = ap_slantRangeTime[i]
         incAngle2d[i, :ap_incidenceAngle[i].shape[0]] = ap_incidenceAngle[i]
 
 
-    swath_number_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
-    roll_angle_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
-    azimuthTime_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
-    terrainHeight_2d = np.full((len(np.unique(swathNumber)), dim_0), np.nan)
+    swath_number_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    roll_angle_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    azimuthTime_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    terrainHeight_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
 
-    slantRangeTime_2d = np.full((len(np.unique(swathNumber)), dim_1), np.nan)
+    slantRangeTime_2d = np.full((len(np.unique(swathNumber)), dim_slantRangeTime), np.nan)
 
-    elevationAngle_3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
-    incidenceAngle_3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
-    gain3d = np.full((len(np.unique(swathNumber)), dim_0, dim_1), np.nan)
+    elevationAngle_3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
+    incidenceAngle_3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
+    gain3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
 
+    
     for i, swath_number in enumerate(np.unique(swathNumber)):
-        for j in range(0, max_length):
-            length_dim0 = len(ap_roll[swathNumber == swath_number])
-            swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
-            roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]
-            azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
-            terrainHeight_2d[i, :length_dim0] = ap_terrainHeight[swathNumber == swath_number]
+        length_dim0 = len(ap_azimuthTime[swathNumber == swath_number])
+        swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
+        azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
+        terrainHeight_2d[i, :length_dim0] = ap_terrainHeight[swathNumber == swath_number]
+        slantRangeTime_2d[i, :] = slantRangeTime2d[i, :]
+
+        if include_roll:
+            roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]        
+
+        for j in range(0, dim_slantRangeTime):
             elevationAngle_3d[i,:length_dim0,j]=elevAngle2d[swathNumber == swath_number,j]
             incidenceAngle_3d[i,:length_dim0,j]=incAngle2d[swathNumber == swath_number,j]
             gain3d[i,:length_dim0,j]=gain2d[swathNumber == swath_number,j]
-        slantRangeTime_2d[i, :] = slantRangeTime2d[i, :]
-
-
+        
     azimuthTime_2d = azimuthTime_2d.astype('datetime64[ns]')
 
     # return a Dataset
     ds = xr.Dataset({
-        'slantRangeTime' : (['swath_nb', 'dim_1'], slantRangeTime_2d),
-        'swath' : (['swath_nb', 'dim_0'], swath_number_2d),
-        'roll' : (['swath_nb', 'dim_0'], roll_angle_2d),
-        'azimuthTime' : (['swath_nb', 'dim_0'], azimuthTime_2d),
-        'terrainHeight' : (['swath_nb', 'dim_0'], terrainHeight_2d),
-        'elevationAngle' : (['swath_nb', 'dim_0','dim_1'],elevationAngle_3d),
-        'incidenceAngle' : (['swath_nb', 'dim_0','dim_1'],incidenceAngle_3d),
-        'gain' : (['swath_nb', 'dim_0','dim_1'],gain3d),
+        'slantRangeTime' : (['swath_nb', 'dim_slantRangeTime'], slantRangeTime_2d),
+        'swath' : (['swath_nb', 'dim_azimuthTime'], swath_number_2d),
+        'roll' : (['swath_nb', 'dim_azimuthTime'], roll_angle_2d),
+        'azimuthTime' : (['swath_nb', 'dim_azimuthTime'], azimuthTime_2d),
+        'terrainHeight' : (['swath_nb', 'dim_azimuthTime'], terrainHeight_2d),
+        'elevationAngle' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],elevationAngle_3d),
+        'incidenceAngle' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],incidenceAngle_3d),
+        'gain' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],gain3d),
         },    
         coords={'swath_nb': np.unique(swathNumber)}
     )
-    ds.attrs["dim_0"] = "max dimension of azimuthTime for a swath"
-    ds.attrs["dim_1"] = "max dimension of slantRangeTime for a swath"
-    ds.attrs["comment"] = "for example, if swath Y is smaller than swath X, user has to remove nan to get the dims of the swath"
-    
+    ds.attrs["dim_azimuthTime"] = "max dimension of azimuthTime for a swath"
+    ds.attrs["dim_slantRangeTime"] = "max dimension of slantRangeTime for a swath"
+    ds.attrs["comment"] = "The antenna pattern data set record contains a list of vectors of the \
+                           antenna elevation pattern values that have been updated along track\
+                           and used to correct the radiometry during image processing."
+    ds.attrs["example"] = "for example, if swath Y is smaller than swath X, user has to remove nan to get the dims of the swath"
+    ds.attrs["source"] = "Sentinel-1 Product Specification"
+
     return ds 
 
 def swath_merging(sm_swath,sm_nbPerSwat,sm_azimuthTime,sm_firstAzimuthLine,sm_lastAzimuthLine,sm_firstRangeSample,sm_lastRangeSample):
@@ -843,15 +858,19 @@ def swath_merging(sm_swath,sm_nbPerSwat,sm_azimuthTime,sm_firstAzimuthLine,sm_la
     swathNumber = vectorized_convert(repeated_swaths)
     
     ds = xr.Dataset({
-        'swaths' : (['dim_0'], swathNumber),
-        'azimuthTime' : (['dim_0'], sm_azimuthTime),
-        'firstAzimuthLine' : (['dim_0'], sm_firstAzimuthLine),
-        'lastAzimuthLine' : (['dim_0'], sm_lastAzimuthLine),
-        'firstRangeSample' : (['dim_0'], sm_firstRangeSample),
-        'lastRangeSample' : (['dim_0'], sm_lastRangeSample),
+        'swaths' : (['dim_azimuthTime'], swathNumber),
+        'azimuthTime' : (['dim_azimuthTime'], sm_azimuthTime),
+        'firstAzimuthLine' : (['dim_azimuthTime'], sm_firstAzimuthLine),
+        'lastAzimuthLine' : (['dim_azimuthTime'], sm_lastAzimuthLine),
+        'firstRangeSample' : (['dim_azimuthTime'], sm_firstRangeSample),
+        'lastRangeSample' : (['dim_azimuthTime'], sm_lastRangeSample),
         },    
     )
-    ds.attrs["comment"] = "the order of information is preserved in the dataset"
+    ds.attrs["comment"] = "The swath merging data set record contains information about how \
+                           multiple swaths were stitched together to form one large contiguous \
+                           swath. This data set record only applies to IW and EW GRD \
+                           products"
+    ds.attrs["source"] = "Sentinel-1 Product Specification"
 
     return ds
 
