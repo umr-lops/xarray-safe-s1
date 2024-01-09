@@ -148,8 +148,10 @@ xpath_mappings = {
         'satellite': (scalar, '//safe:platform/safe:number'),
         'start_date': (date_converter, '//safe:acquisitionPeriod/safe:startTime'),
         'stop_date': (date_converter, '//safe:acquisitionPeriod/safe:stopTime'),
-        'aux_cal': (scalar,
-                    '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        
+        'aux_cal': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
+        'aux_pp1': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_PP1"]/@name'),
+
         'aux_cal_sl2': (scalar,'//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'annotation_files': (
             normpath, '/xfdu:XFDU/dataObjectSection/*[@repID="s1Level1ProductSchema"]/byteStream/fileLocation/@href'),
@@ -302,8 +304,32 @@ xpath_mappings = {
         'fmrate_azimuthFmRatePolynomial': (
             list_of_float_1D_array_from_string,
             '//product/generalAnnotation/azimuthFmRateList/azimuthFmRate/azimuthFmRatePolynomial'),
+        
+        'ap_azimuthTime': (
+            datetime64_array, '/product/antennaPattern/antennaPatternList/antennaPattern/azimuthTime'),        
+        'ap_roll' : (float_array, '/product/antennaPattern/antennaPatternList/antennaPattern/roll'),
+        'ap_swath' : (lambda x: np.array(x), '/product/antennaPattern/antennaPatternList/antennaPattern/swath'),
+        
+        'ap_elevationAngle': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationAngle'), 
+        'ap_incidenceAngle': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/incidenceAngle'), 
+        'ap_slantRangeTime': (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/slantRangeTime'),        
+        'ap_terrainHeight': (
+            float_array, '/product/antennaPattern/antennaPatternList/antennaPattern/terrainHeight'),        
+        'ap_elevationPattern' : (
+            list_of_float_1D_array_from_string, '/product/antennaPattern/antennaPatternList/antennaPattern/elevationPattern'),        
+        
+        'sm_nbPerSwat': (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/@count'),
+        'sm_swath' : (lambda x: np.array(x),     '/product/swathMerging/swathMergeList/swathMerge/swath'),
+        'sm_azimuthTime' : (datetime64_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/azimuthTime'),      
+        'sm_firstAzimuthLine' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/firstAzimuthLine'),      
+        'sm_lastAzimuthLine' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/lastAzimuthLine'),      
+        'sm_firstRangeSample' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/firstRangeSample'),      
+        'sm_lastRangeSample' : (int_array, '/product/swathMerging/swathMergeList/swathMerge/swathBoundsList/swathBounds/lastRangeSample'),      
 
-    },
+    },   
     'xsd': {'all': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/xsd:annotation/xsd:documentation'),
             'names': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/@name'),
             'sensingtime': (str, '/xsd:schema/xsd:complexType/xsd:sequence/xsd:element/sensingTime')
@@ -694,6 +720,7 @@ def doppler_centroid_estimates(nb_dcestimate,
                                                           'source': xpath_mappings['annotation']['dc_rmserrAboveThres'][
                                                               1]},
                                                       coords={'azimuthTime': dc_azimuth_time})
+    
     return ds
 
 
@@ -716,6 +743,147 @@ def geolocation_grid(line, sample, values):
     values = np.reshape(values, shape)
     return xr.DataArray(values, dims=['line', 'sample'], coords={'line': line, 'sample': sample})
 
+def antenna_pattern(ap_swath,ap_roll,ap_azimuthTime,ap_terrainHeight,ap_elevationAngle,ap_elevationPattern,ap_incidenceAngle,ap_slantRangeTime):
+    """
+
+    Parameters
+    ----------
+    ap_swath
+    ap_roll
+    ap_azimuthTime
+    ap_terrainHeight
+    ap_elevationAngle
+    ap_elevationPattern
+    ap_incidenceAngle
+    ap_slantRangeTime
+    
+    Returns
+    -------
+    xarray.DataSet
+    """   
+    # Fonction to convert string 'EW1' ou 'IW3' as int
+    def convert_to_int(swath):
+        return int(swath[-1])
+    vectorized_convert = np.vectorize(convert_to_int)
+    swathNumber = vectorized_convert(ap_swath)
+
+    dim_azimuthTime = max(np.bincount(swathNumber))
+    dim_slantRangeTime = max(array.shape[0] for array in ap_elevationAngle)
+
+    include_roll = len(ap_roll) != 0
+
+    # Create 2Ds arrays 
+    elevAngle2d = np.full((len(ap_elevationAngle), dim_slantRangeTime), np.nan)  
+    gain2d = np.full((len(ap_elevationPattern), dim_slantRangeTime), np.nan)  
+    slantRangeTime2d = np.full((len(ap_slantRangeTime), dim_slantRangeTime), np.nan)
+    incAngle2d = np.full((len(ap_incidenceAngle), dim_slantRangeTime), np.nan)
+
+    
+    for i in range(len(ap_elevationAngle)):
+        elevAngle2d[i, :ap_elevationAngle[i].shape[0]] = ap_elevationAngle[i]
+
+        if ap_elevationAngle[i].shape[0] != ap_elevationPattern[i].shape[0] :
+            gain2d[i, :ap_elevationAngle[i].shape[0]] = np.sqrt(ap_elevationPattern[i][::2]**2+ap_elevationPattern[i][1::2]**2)
+        else:
+            #logging.warn("antenna pattern is not given in complex values. You probably use an old file\n" + e) 
+            gain2d[i, :ap_elevationAngle[i].shape[0]] = ap_elevationPattern[i]
+
+        slantRangeTime2d[i, :ap_slantRangeTime[i].shape[0]] = ap_slantRangeTime[i]
+        incAngle2d[i, :ap_incidenceAngle[i].shape[0]] = ap_incidenceAngle[i]
+
+
+    swath_number_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    roll_angle_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    azimuthTime_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+    terrainHeight_2d = np.full((len(np.unique(swathNumber)), dim_azimuthTime), np.nan)
+
+    slantRangeTime_2d = np.full((len(np.unique(swathNumber)), dim_slantRangeTime), np.nan)
+
+    elevationAngle_3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
+    incidenceAngle_3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
+    gain3d = np.full((len(np.unique(swathNumber)), dim_azimuthTime, dim_slantRangeTime), np.nan)
+
+    
+    for i, swath_number in enumerate(np.unique(swathNumber)):
+        length_dim0 = len(ap_azimuthTime[swathNumber == swath_number])
+        swath_number_2d[i, :length_dim0] = swathNumber[swathNumber == swath_number]
+        azimuthTime_2d[i, :length_dim0] = ap_azimuthTime[swathNumber == swath_number]
+        terrainHeight_2d[i, :length_dim0] = ap_terrainHeight[swathNumber == swath_number]
+        slantRangeTime_2d[i, :] = slantRangeTime2d[i, :]
+
+        if include_roll:
+            roll_angle_2d[i, :length_dim0] = ap_roll[swathNumber == swath_number]        
+
+        for j in range(0, dim_slantRangeTime):
+            elevationAngle_3d[i,:length_dim0,j]=elevAngle2d[swathNumber == swath_number,j]
+            incidenceAngle_3d[i,:length_dim0,j]=incAngle2d[swathNumber == swath_number,j]
+            gain3d[i,:length_dim0,j]=gain2d[swathNumber == swath_number,j]
+        
+    azimuthTime_2d = azimuthTime_2d.astype('datetime64[ns]')
+
+    # return a Dataset
+    ds = xr.Dataset({
+        'slantRangeTime' : (['swath_nb', 'dim_slantRangeTime'], slantRangeTime_2d),
+        'swath' : (['swath_nb', 'dim_azimuthTime'], swath_number_2d),
+        'roll' : (['swath_nb', 'dim_azimuthTime'], roll_angle_2d),
+        'azimuthTime' : (['swath_nb', 'dim_azimuthTime'], azimuthTime_2d),
+        'terrainHeight' : (['swath_nb', 'dim_azimuthTime'], terrainHeight_2d),
+        'elevationAngle' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],elevationAngle_3d),
+        'incidenceAngle' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],incidenceAngle_3d),
+        'gain' : (['swath_nb', 'dim_azimuthTime','dim_slantRangeTime'],gain3d),
+        },    
+        coords={'swath_nb': np.unique(swathNumber)}
+    )
+    ds.attrs["dim_azimuthTime"] = "max dimension of azimuthTime for a swath"
+    ds.attrs["dim_slantRangeTime"] = "max dimension of slantRangeTime for a swath"
+    ds.attrs["comment"] = "The antenna pattern data set record contains a list of vectors of the \
+                           antenna elevation pattern values that have been updated along track\
+                           and used to correct the radiometry during image processing."
+    ds.attrs["example"] = "for example, if swath Y is smaller than swath X, user has to remove nan to get the dims of the swath"
+    ds.attrs["source"] = "Sentinel-1 Product Specification"
+
+    return ds 
+
+def swath_merging(sm_swath,sm_nbPerSwat,sm_azimuthTime,sm_firstAzimuthLine,sm_lastAzimuthLine,sm_firstRangeSample,sm_lastRangeSample):
+    """
+
+    Parameters
+    ----------
+    sm_swath
+    sm_nbPerSwat
+    sm_azimuthTime
+    sm_firstAzimuthLine
+    sm_lastAzimuthLine
+    sm_firstRangeSample
+    sm_lastRangeSample
+    
+    Returns
+    -------
+    xarray.DataSet
+    """   
+    # Fonction to convert string 'EW1' ou 'IW3' as int
+    def convert_to_int(swath):
+        return int(swath[-1])
+    vectorized_convert = np.vectorize(convert_to_int)
+    repeated_swaths = np.repeat(sm_swath, sm_nbPerSwat)
+    swathNumber = vectorized_convert(repeated_swaths)
+    
+    ds = xr.Dataset({
+        'swaths' : (['dim_azimuthTime'], swathNumber),
+        'azimuthTime' : (['dim_azimuthTime'], sm_azimuthTime),
+        'firstAzimuthLine' : (['dim_azimuthTime'], sm_firstAzimuthLine),
+        'lastAzimuthLine' : (['dim_azimuthTime'], sm_lastAzimuthLine),
+        'firstRangeSample' : (['dim_azimuthTime'], sm_firstRangeSample),
+        'lastRangeSample' : (['dim_azimuthTime'], sm_lastRangeSample),
+        },    
+    )
+    ds.attrs["comment"] = "The swath merging data set record contains information about how \
+                           multiple swaths were stitched together to form one large contiguous \
+                           swath. This data set record only applies to IW and EW GRD \
+                           products"
+    ds.attrs["source"] = "Sentinel-1 Product Specification"
+
+    return ds
 
 # dict of compounds variables.
 # compounds variables are variables composed of several variables.
@@ -732,7 +900,8 @@ compounds_vars = {
         'start_date': 'manifest.start_date',
         'stop_date': 'manifest.stop_date',
         'footprints': 'manifest.footprints',
-        'aux_cal': 'manifest.aux_cal'
+        'aux_cal': 'manifest.aux_cal',
+        'aux_pp1': 'manifest.aux_pp1'
     },
     'safe_attributes_sl2': {
         'ipf_version': 'manifest.ipf_version',
@@ -855,5 +1024,18 @@ compounds_vars = {
                  'annotation.dc_azstoptime', 'annotation.dc_slantRangeTime', 'annotation.dc_frequency'
 
                  ),
+    },
+    'antenna_pattern': {
+        'func': antenna_pattern,
+        'args': ('annotation.ap_swath','annotation.ap_roll','annotation.ap_azimuthTime','annotation.ap_terrainHeight',
+                 'annotation.ap_elevationAngle','annotation.ap_elevationPattern','annotation.ap_incidenceAngle',
+                 'annotation.ap_slantRangeTime'
+        )
+    },
+    'swath_merging': {
+        'func': swath_merging,
+        'args': ('annotation.sm_swath','annotation.sm_nbPerSwat','annotation.sm_azimuthTime','annotation.sm_firstAzimuthLine',
+                 'annotation.sm_lastAzimuthLine','annotation.sm_firstRangeSample','annotation.sm_lastRangeSample'
+        )
     },
 }
