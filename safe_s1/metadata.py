@@ -104,6 +104,7 @@ class Sentinel1Reader:
                 'swath_merging': self.swath_merging
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
+            self.dt = self.corrected_range_noise_lut(self.dt)
             assert self.dt==self.datatree
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
@@ -653,6 +654,28 @@ class Sentinel1Reader:
             tmp.append(noise_lut_range_raw_ds)
         ds = xr.concat(tmp, pd.Index(pols, name="pol"))
         return ds
+
+    def corrected_range_noise_lut(self,dt):
+        """
+        correction proposed by F.Nouguier 2024 as a workaround to corrupted annotation files in ESA level-1 SLC products
+        Return range noise lut with corrected line numbering. This function should be used only on the full SLC dataset dt
+        Args:
+            dt (xarray.datatree) : datatree returned by xsar corresponding to one subswath
+        Return:
+            (xarray.dataset) : range noise lut with corrected line number
+        """
+        # Detection of azimuthTime jumps (linked to burst changes). Burst sensingTime should NOT be used since they have erroneous value too !
+        tt = dt['measurement']['time']
+        i_jump = np.ravel(np.argwhere(np.diff(tt) < np.timedelta64(0)) + 1)  # index of jumps
+        line_jump_meas = dt['measurement']['line'][i_jump]  # line number of jumps
+        line_jump_noise = np.ravel(dt['noise_range']['line'][1:-1].data)  # annotated line number of burst beginning
+        burst_first_lineshift = line_jump_meas - line_jump_noise
+        if len(np.unique(burst_first_lineshift)) == 1:
+            line_shift = int(np.unique(burst_first_lineshift)[0])
+        else:
+            raise ValueError('Inconsistency in line shifting : {}'.format(burst_first_lineshift))
+
+        return dt['noise_range'].ds.assign_coords({'line': dt['noise_range']['line'] + line_shift})
 
     def get_noise_azi_initial_parameters(self, pol):
         """
