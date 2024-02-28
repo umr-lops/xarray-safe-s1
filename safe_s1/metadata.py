@@ -1,4 +1,5 @@
 import os
+import pdb
 import re
 
 import dask
@@ -11,6 +12,7 @@ from rioxarray import rioxarray
 
 from . import sentinel1_xml_mappings
 from .xml_parser import XmlParser
+from scipy.interpolate import interp1d
 import xarray as xr
 import datatree
 import pandas as pd
@@ -89,7 +91,6 @@ class Sentinel1Reader:
             'geolocationGrid': None,
         }
         if not self.multidataset:
-
             self._dict = {
                 'geolocationGrid': self.geoloc,
                 'orbit': self.orbit,
@@ -100,11 +101,24 @@ class Sentinel1Reader:
                 'calibration_luts': self.get_calibration_luts,
                 'noise_azimuth_raw': self.get_noise_azi_raw,
                 'noise_range_raw': self.get_noise_range_raw,
-                'antenna_pattern':self.antenna_pattern,
+                'antenna_pattern': self.antenna_pattern,
                 'swath_merging': self.swath_merging
             }
+
+            self.resolution, DN_tmp = self.load_digital_number(chunks={'line': 5000, 'sample': 5000})
+            DN_tmp = xr.merge(
+                [xr.Dataset({'time': self.get_burst_azitime(line_coordinate_hr_image=DN_tmp.line)}), DN_tmp])
+
+
+            self._dict['measurement'] =  DN_tmp
+
             self.dt = datatree.DataTree.from_dict(self._dict)
-            self.dt = self.corrected_range_noise_lut(self.dt)
+            self.corrected_range_noise_lut(self.dt)
+            # self.dt['noise_range_raw'] = self.corrected_range_noise_lut(self.dt)
+            pdb.set_trace()
+            self.dt['noise_range_raw'].ds = self.dt['noise_range_raw'].ds.merge(self.corrected_range_noise_lut(self.dt),compat='override')
+            # tmp_noise_range_raw = self.corrected_range_noise_lut(self.dt)
+            # self.dt = self.dt.merge(tmp_noise_range_raw)
             assert self.dt==self.datatree
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
@@ -668,14 +682,14 @@ class Sentinel1Reader:
         tt = dt['measurement']['time']
         i_jump = np.ravel(np.argwhere(np.diff(tt) < np.timedelta64(0)) + 1)  # index of jumps
         line_jump_meas = dt['measurement']['line'][i_jump]  # line number of jumps
-        line_jump_noise = np.ravel(dt['noise_range']['line'][1:-1].data)  # annotated line number of burst beginning
+        line_jump_noise = np.ravel(dt['noise_range_raw']['line'][1:-1].data)  # annotated line number of burst beginning
         burst_first_lineshift = line_jump_meas - line_jump_noise
         if len(np.unique(burst_first_lineshift)) == 1:
             line_shift = int(np.unique(burst_first_lineshift)[0])
         else:
             raise ValueError('Inconsistency in line shifting : {}'.format(burst_first_lineshift))
 
-        return dt['noise_range'].ds.assign_coords({'line': dt['noise_range']['line'] + line_shift})
+        return dt['noise_range_raw'].ds.assign_coords({'line': dt['noise_range_raw']['line'] + line_shift})
 
     def get_noise_azi_initial_parameters(self, pol):
         """
@@ -762,3 +776,91 @@ class Sentinel1Reader:
         else:
             typee = "single"
         return "<Sentinel1Reader %s object>" % typee
+
+
+    def _burst_azitime(self):
+        """
+        Get azimuth time at high resolution on the full image shape
+
+        Returns
+        -------
+        np.ndarray
+            the high resolution azimuth time vector interpolated at the midle of the subswath
+        """
+        line = np.arange(0, self._dict['image']['numberOfLines'])
+        # line = np.arange(0,self.datatree.attrs['numberOfLines'])
+        if self.product == 'SLC' and 'WV' not in str(self._dict['image']['swath_subswath'].data):
+            azi_time_int = self._dict['image']['azimuthTimeInterval']
+            # azi_time_int = self.datatree.attrs['azimuthTimeInterval']
+            # turn this interval float/seconds into timedelta/picoseconds
+            azi_time_int = np.timedelta64(int(azi_time_int * 1e12), 'ps')
+            ind, geoloc_azitime, geoloc_iburst, geoloc_line = self._get_indices_bursts()
+            # compute the azimuth time by adding a step function (first term) and a growing term (second term)
+            azitime = geoloc_azitime[ind] + \
+                (line - geoloc_line[ind]) * azi_time_int.astype('<m8[ns]')
+        else:  # GRD* cases
+            # n_pixels = int((len(self.datatree['geolocation_annotation'].ds['sample']) - 1) / 2)
+            # geoloc_azitime = self.datatree['geolocation_annotation'].ds['azimuth_time'].values[:, n_pixels]
+            # geoloc_line = self.datatree['geolocation_annotation'].ds['line'].values
+            n_pixels = int((len(self._dict['geolocationGrid']['sample']) - 1) / 2)
+            geoloc_azitime = self._dict['geolocationGrid']['azimuthTime'].values[:, n_pixels]
+            geoloc_line = self._dict['geolocationGrid']['line'].values
+            finterp = interp1d(geoloc_line, geoloc_azitime.astype(float))
+            azitime = finterp(line)
+            azitime = azitime.astype('<M8[ns]')
+        azitime = xr.DataArray(azitime, coords={'line': line}, dims=['line'],
+                               attrs={
+                                   'description': 'azimuth times interpolated along line dimension at the middle of range dimension'})
+
+        return azitime
+
+    def _get_indices_bursts(self):
+        """
+
+        Returns
+        -------
+        ind np.array
+            index of the burst start in the line coordinates
+        geoloc_azitime np.array
+            azimuth time at the middle of the image from geolocation grid (low resolution)
+        geoloc_iburst np.array
+
+        """
+        ind = None
+        geoloc_azitime = None
+        geoloc_iburst = None
+        geoloc_line = None
+        if self.product == 'SLC' and 'WV' not in str(self._dict['image']['swath_subswath'].data):
+            burst_nlines = int(self._dict['bursts']['linesPerBurst'])
+
+            geoloc_line = self._dict['geolocationGrid']['line'].values
+            # geoloc_line = self.datatree['geolocation_annotation'].ds['line'].values
+            # find the indice of the bursts in the geolocation grid
+            geoloc_iburst = np.floor(geoloc_line / float(burst_nlines)).astype('int32')
+            # find the indices of the bursts in the high resolution grid
+            line = np.arange(0, self._dict['image']['numberOfLines'])
+            # line = np.arange(0, self.datatree.attrs['numberOfLines'])
+            iburst = np.floor(line / float(burst_nlines)).astype('int32')
+            # find the indices of the burst transitions
+            ind = np.searchsorted(geoloc_iburst, iburst, side='left')
+            n_pixels = int((len(self._dict['geolocationGrid']['sample']) - 1) / 2)
+            geoloc_azitime = self._dict['geolocationGrid']['azimuthTime'].values[:, n_pixels]
+            # security check for unrealistic line_values exceeding the image extent
+            if ind.max() >= len(geoloc_azitime):
+                ind[ind >= len(geoloc_azitime)] = len(geoloc_azitime) - 1
+        return ind, geoloc_azitime, geoloc_iburst, geoloc_line
+
+    def get_burst_azitime(self,line_coordinate_hr_image):
+        """
+        Get azimuth time at high resolution.
+
+        Returns
+        -------
+        xarray.DataArray
+            the high resolution azimuth time vector interpolated at the middle of the sub-swath
+        """
+        azitime = self._burst_azitime()
+        iz = np.searchsorted(azitime.line, line_coordinate_hr_image)
+        azitime = azitime.isel({'line': iz})
+        azitime = azitime.assign_coords({"line": line_coordinate_hr_image})
+        return azitime
