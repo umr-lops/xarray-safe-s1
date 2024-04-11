@@ -472,7 +472,7 @@ def df_files(annotation_files, measurement_files, noise_files, calibration_files
 def xsd_files_func(xsd_product_file):
     """
     return a xarray Dataset with path of the different xsd files
-    :param xsd_product:
+    :param xsd_product: str
     :return:
     """
     ds = xr.Dataset()
