@@ -1,6 +1,6 @@
 import os
 import re
-
+import pdb
 import dask
 import fsspec
 import numpy as np
@@ -20,11 +20,16 @@ import warnings
 class Sentinel1Reader:
 
     def __init__(self, name, backend_kwargs=None):
-        if not isinstance(name, (str, os.PathLike)):
-            raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
+        #if not isinstance(name, (str, os.PathLike)):
+        #    raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
         # gdal dataset name
-        if not name.startswith('SENTINEL1_DS:'):
-            name = 'SENTINEL1_DS:%s:' % name
+        if isinstance(name, (str, os.PathLike)):
+
+            if not name.startswith('SENTINEL1_DS:'):
+                name = 'SENTINEL1_DS:%s:' % name
+            print('type',type(name))
+        elif isinstance(name,fsspec.mapping.FSMap):
+            name = name.root
         self.name = name
         """Gdal dataset name"""
         name_parts = self.name.split(':')
@@ -43,7 +48,10 @@ class Sentinel1Reader:
             backend_kwargs = {}
         self.path = os.fspath(self.path)
         storage_options = backend_kwargs.get("storage_options", {})
-        mapper = fsspec.get_mapper(self.path, **storage_options)
+        if isinstance(name,fsspec.mapping.FSMap):
+            mapper = name
+        else:
+            mapper = fsspec.get_mapper(self.path, **storage_options)
         self.xml_parser = XmlParser(
             xpath_mappings=sentinel1_xml_mappings.xpath_mappings,
             compounds_vars=sentinel1_xml_mappings.compounds_vars,

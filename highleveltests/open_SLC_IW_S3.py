@@ -33,11 +33,9 @@ pattern="Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013
 pattern="Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155*.SAFE"
 #files = bu.objects.filter(Prefix=pattern) # to test like in the example of creodias documentation
 #lol = [filee.key for filee in files if os.path.splitext(filee.key)[1]=='.SAFE']
-safe2='eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE'
-Sentinel1Reader(s3.get_mapper(safe2))
-pdb.set_trace()
-sub_reader = Sentinel1Reader(safe)
+safe2='SENTINEL1_DS:/eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE:IW1'
+sub_reader = Sentinel1Reader(s3.get_mapper(safe2))
+#sub_reader = Sentinel1Reader(safe)
 dt = sub_reader.datatree
 print('out of the reader')
 print(dt)
-pdb.set_trace()
