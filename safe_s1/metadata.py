@@ -28,29 +28,40 @@ class Sentinel1Reader:
             if not name.startswith('SENTINEL1_DS:'):
                 name = 'SENTINEL1_DS:%s:' % name
             print('type',type(name))
+            self.name = name
+            """Gdal dataset name"""
+            name_parts = self.name.split(':')
+            if len(name_parts) > 3:
+                # windows might have semicolon in path ('c:\...')
+                name_parts[1] = ':'.join(name_parts[1:-1])
+                del name_parts[2:-1]
+            print('name_parts',name_parts)
+            name_parts[1] = os.path.basename(name_parts[1])
+            self.short_name = ':'.join(name_parts)
+            """Like name, but without path"""
+            self.path = ':'.join(self.name.split(':')[1:-1])
+            """Dataset path"""
+            self.safe = os.path.basename(self.path)
+
+            self.path = os.fspath(self.path)
         elif isinstance(name,fsspec.mapping.FSMap):
-            name = name.root
-        self.name = name
-        """Gdal dataset name"""
-        name_parts = self.name.split(':')
-        if len(name_parts) > 3:
-            # windows might have semicolon in path ('c:\...')
-            name_parts[1] = ':'.join(name_parts[1:-1])
-            del name_parts[2:-1]
-        name_parts[1] = os.path.basename(name_parts[1])
-        self.short_name = ':'.join(name_parts)
-        """Like name, but without path"""
-        self.path = ':'.join(self.name.split(':')[1:-1])
-        """Dataset path"""
-        self.safe = os.path.basename(self.path)
+            self.safe = os.path.basename(name.root)
+            self.name = 'SENTINEL1_DS:'+name.root+':IW'
+            self.path = name.root.split(':')[-1]
+            self.short_name = name.root
+            pass
 
         if backend_kwargs is None:
             backend_kwargs = {}
-        self.path = os.fspath(self.path)
+        print('slef.path',self.path)
+        print('self.name',self.name)
+        #print('self.short_name',self.short_name)
         storage_options = backend_kwargs.get("storage_options", {})
         if isinstance(name,fsspec.mapping.FSMap):
+            print('case fsspec.mapping.FSMap')
             mapper = name
         else:
+            print('classical case')
             mapper = fsspec.get_mapper(self.path, **storage_options)
         self.xml_parser = XmlParser(
             xpath_mappings=sentinel1_xml_mappings.xpath_mappings,
@@ -89,6 +100,7 @@ class Sentinel1Reader:
         # self._submeta = []
         if self.short_name.endswith(':'):
             self.short_name = self.short_name + self.dsid
+        print('self.files',self.files)
         if self.files.empty:
             self._multidataset = True
 
@@ -97,7 +109,6 @@ class Sentinel1Reader:
             'geolocationGrid': None,
         }
         if not self.multidataset:
-
             self._dict = {
                 'geolocationGrid': self.geoloc,
                 'orbit': self.orbit,
@@ -113,6 +124,9 @@ class Sentinel1Reader:
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
+        else:
+            print('multidataset')
+            raise Exception()
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """
@@ -739,6 +753,9 @@ class Sentinel1Reader:
         --------
         Sentinel1Reader.safe_files
         """
+        #print("safe_files",self.safe_files['dsid'] )
+        #for uu in self.safe_files['dsid']:
+        #    print('uu',uu)
         return self.safe_files[self.safe_files['dsid'] == self.name]
 
     def __repr__(self):
