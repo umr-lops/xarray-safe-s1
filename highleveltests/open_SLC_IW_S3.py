@@ -2,8 +2,8 @@
 from safe_s1 import Sentinel1Reader,getconfig
 import pdb
 import os
+import time
 import logging
-import boto3
 import fsspec
 logging.basicConfig(level=logging.INFO)
 logging.info('test start')
@@ -11,7 +11,6 @@ conf = getconfig.get_config()
 access_key = conf['access_key']
 secret_key = conf['secret_key']
 entrypoint_url = conf['entrypoint_url']
-session = boto3.session.Session()
 #s3 = boto3.resource(
 #    's3',
 #    endpoint_url='https://eodata.dataspace.copernicus.eu',
@@ -19,23 +18,26 @@ session = boto3.session.Session()
 #    aws_secret_access_key=secret_key,
 #    region_name='default'
 #)  # generated secrets
+#bu = s3.Bucket("eodata")
 s3 = fsspec.filesystem("s3", anon=False,
       key=access_key,
       secret=secret_key,
       endpoint_url='https://'+entrypoint_url)
-#bu = s3.Bucket("eodata")
-safe = 's3://eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE/:IW1'
-logging.info('safe = %s',safe)
-tiff='/home/antoine/Documents/data/sentinel1/S1A_IW_SLC__1SDV_20220507T162437_20220507T162504_043107_0525DE_B14E.SAFE/measurement/s1a-iw1-slc-vv-20220507t162439-20220507t162504-043107-0525de-004.tiff'
-#reader = Sentinel1Reader(os.path.dirname(os.path.dirname(tiff)))
-#sub_reader = Sentinel1Reader(tiff)
-pattern="Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE"
-pattern="Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155*.SAFE"
-#files = bu.objects.filter(Prefix=pattern) # to test like in the example of creodias documentation
-#lol = [filee.key for filee in files if os.path.splitext(filee.key)[1]=='.SAFE']
-safe2='SENTINEL1_DS:/eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE:IW1'
-sub_reader = Sentinel1Reader(s3.get_mapper(safe2))
-#sub_reader = Sentinel1Reader(safe)
+
+# this syntaxe works we can get content xml files but I would have to precise which subswath I want to decode in case of SLC
+safe2 = 's3:///eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE'
+safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/18/S1A_IW_GRDH_1SSH_20240418T080141_20240418T080210_053485_067D74_C073.SAFE'
+option = 'kwargs'
+if option == 'kwargs':
+    storage_options = {"anon": False, "client_kwargs": {"endpoint_url": 'https://'+entrypoint_url, 'aws_access_key_id':access_key,
+    'aws_secret_access_key':secret_key}} # "access_key":access_key,'secret':secret_key,  'session':s3 'config_kwargs':conf
+    t0 = time.time()
+    sub_reader = Sentinel1Reader(safe2,backend_kwargs={"storage_options": storage_options})
+    elapse_t = time.time()-t0
+    print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
+else:
+    # this solution is not supported.
+    sub_reader = Sentinel1Reader(s3.get_mapper(safe2)) # botocore.errorfactory.NoSuchKey: An error occurred (NoSuchKey) when calling the GetObject operation: Unknown
 dt = sub_reader.datatree
 print('out of the reader')
 print(dt)
