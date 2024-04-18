@@ -1,6 +1,6 @@
 import os
 import re
-
+import pdb
 import dask
 import fsspec
 import numpy as np
@@ -21,7 +21,7 @@ class Sentinel1Reader:
 
     def __init__(self, name, backend_kwargs=None):
         if not isinstance(name, (str, os.PathLike)):
-            raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
+           raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
         # gdal dataset name
         if not name.startswith('SENTINEL1_DS:'):
             name = 'SENTINEL1_DS:%s:' % name
@@ -39,10 +39,13 @@ class Sentinel1Reader:
         """Dataset path"""
         self.safe = os.path.basename(self.path)
 
+        self.path = os.fspath(self.path)
+
         if backend_kwargs is None:
             backend_kwargs = {}
-        self.path = os.fspath(self.path)
+
         storage_options = backend_kwargs.get("storage_options", {})
+
         mapper = fsspec.get_mapper(self.path, **storage_options)
         self.xml_parser = XmlParser(
             xpath_mappings=sentinel1_xml_mappings.xpath_mappings,
@@ -89,7 +92,6 @@ class Sentinel1Reader:
             'geolocationGrid': None,
         }
         if not self.multidataset:
-
             self._dict = {
                 'geolocationGrid': self.geoloc,
                 'orbit': self.orbit,
@@ -105,6 +107,9 @@ class Sentinel1Reader:
             }
             self.dt = datatree.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
+        else:
+            print('multidataset')
+            raise Exception()
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """

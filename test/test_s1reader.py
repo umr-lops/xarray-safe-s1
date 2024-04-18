@@ -1,9 +1,6 @@
-import safe_s1
-from safe_s1 import sentinel1_xml_mappings, Sentinel1Reader
-import os
+from safe_s1 import sentinel1_xml_mappings, Sentinel1Reader, getconfig
 import logging
-from pathlib import Path
-import yaml
+
 
 logging.basicConfig()
 logging.captureWarnings(True)
@@ -11,20 +8,8 @@ logging.captureWarnings(True)
 logger = logging.getLogger('s1_reader_test')
 logger.setLevel(logging.DEBUG)
 
-
-# determine the config file we will use (config.yml by default, and a local config if one is present) and retrieve
-# the products names
-local_config_pontential_path = Path(os.path.join('~', 'xarray-safe-s1', 'localconfig.yml')).expanduser()
-if local_config_pontential_path.exists():
-    config_path = local_config_pontential_path
-    with open(config_path) as config_content:
-        products = yaml.load(config_content, Loader=yaml.SafeLoader)['product_paths']
-else:
-    config_path = Path(os.path.join(os.path.dirname(safe_s1.__file__), 'config.yml'))
-    with open(config_path) as config_content:
-        raw_products = yaml.load(config_content, Loader=yaml.SafeLoader)['product_paths']
-    products = [sentinel1_xml_mappings.get_test_file(filename) for filename in raw_products]
-
+conf = getconfig.get_config()
+products = [sentinel1_xml_mappings.get_test_file(filename) for filename in conf['product_paths']]
 
 # Try to apply the reader on different products
 def test_reader():
