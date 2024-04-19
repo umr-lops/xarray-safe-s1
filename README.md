@@ -152,4 +152,11 @@ DataTree('None', parent=None)
 
 ```
 
+Example of usage for S3: access
 
+```pycon
+url = 's3:///eodata/..../.SAFE'
+storage_options = {"anon": False, "client_kwargs": {"endpoint_url": 'https://'+entrypoint_url, 'aws_access_key_id':access_key,
+    'aws_secret_access_key':secret_key}}
+reader = Sentinel1Reader(url,backend_kwargs={"storage_options": storage_options})
+```
