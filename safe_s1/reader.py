@@ -15,6 +15,7 @@ import xarray as xr
 import datatree
 import pandas as pd
 import warnings
+import logging
 
 
 class Sentinel1Reader:
@@ -35,12 +36,17 @@ class Sentinel1Reader:
         name_parts[1] = os.path.basename(name_parts[1])
         self.short_name = ':'.join(name_parts)
         """Like name, but without path"""
-        self.path = ':'.join(self.name.split(':')[1:-1])
+        if ':IW' in self.name or ':WV' in self.name or ':EW' in self.name:
+            self.path = ':'.join(self.name.split(':')[1:-2])
+            self.path = self.path.rstrip(':')
+            self.name = self.name.rstrip(':')
+        else:
+            self.path = ':'.join(self.name.split(':')[1:-1])
         """Dataset path"""
         self.safe = os.path.basename(self.path)
 
         self.path = os.fspath(self.path)
-
+        logging.debug(' safe: %s path %s name: %s',self.safe,self.path,self.name)
         if backend_kwargs is None:
             backend_kwargs = {}
 
@@ -53,7 +59,6 @@ class Sentinel1Reader:
             namespaces=sentinel1_xml_mappings.namespaces,
             mapper=mapper
         )
-
         self.manifest = 'manifest.safe'
         if 'SLC' in self.path or 'GRD' in self.path:
             self.manifest_attrs = self.xml_parser.get_compound_var(self.manifest, 'safe_attributes_slcgrd')
@@ -69,16 +74,20 @@ class Sentinel1Reader:
         self.xsd_definitions = self.get_annotation_definitions()
         if self.name.endswith(':') and len(self._datasets_names) == 1:
             self.name = self._datasets_names[0]
-        self.dsid = self.name.split(':')[-1]
+        if 's3:' in self.name:
+            self.dsid = self.name.split(':')[-2]
+        else:
+            self.dsid = self.name.split(':')[-1]
+        logging.debug('self.dsid: %s',self.dsid)
         """Dataset identifier (like 'WV_001', 'IW1', 'IW'), or empty string for multidataset"""
 
         try:
             self.product = os.path.basename(self.path).split('_')[2]
+            logging.debug('product: %s',self.product)
         except:
-            print("path: %s" % self.path)
+            logging.debug("path: %s" % self.path)
             self.product = "XXX"
         """Product type, like 'GRDH', 'SLC', etc .."""
-
         # submeta is a list of submeta objects if multidataset and TOPS
         # this list will remain empty for _WV__SLC because it will be time-consuming to process them
         # self._submeta = []
