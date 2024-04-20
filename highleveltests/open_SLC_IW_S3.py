@@ -31,6 +31,7 @@ if __name__ == '__main__':
 
     # this syntaxe works we can get content xml files but I would have to precise which subswath I want to decode in case of SLC
     safe2 = 's3:///eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE:IW2'
+    safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/20/S1A_IW_GRDH_1SDV_20240420T181712_20240420T181741_053521_067EDF_8CA4.SAFE/'
     #safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/18/S1A_IW_GRDH_1SSH_20240418T080141_20240418T080210_053485_067D74_C073.SAFE'
     # safe2 = conf['s3_iw_grd_path']
     logging.info('safe: %s',safe2)
