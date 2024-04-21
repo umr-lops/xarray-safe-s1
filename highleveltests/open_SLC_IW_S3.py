@@ -5,32 +5,54 @@ import os
 import time
 import logging
 import fsspec
-logging.basicConfig(level=logging.INFO)
-logging.info('test start')
-conf = getconfig.get_config()
-access_key = conf['access_key']
-secret_key = conf['secret_key']
-entrypoint_url = conf['entrypoint_url']
-s3 = fsspec.filesystem("s3", anon=False,
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='L1BwaveIFR_IW_SLC')
+    parser.add_argument('--verbose', action='store_true', default=False)
+    parser.add_argument('--option',choices=['kwargs','nfs','s3mapperold'],help='method to access the data on /eodata')
+    args = parser.parse_args()
+    fmt = '%(asctime)s %(levelname)s %(filename)s(%(lineno)d) %(message)s'
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format=fmt,
+                            datefmt='%d/%m/%Y %H:%M:%S',force=True)
+    else:
+        logging.basicConfig(level=logging.INFO, format=fmt,
+                            datefmt='%d/%m/%Y %H:%M:%S',force=True)
+
+    logging.info('test start')
+    conf = getconfig.get_config()
+    access_key = conf['access_key']
+    secret_key = conf['secret_key']
+    entrypoint_url = conf['entrypoint_url']
+    s3 = fsspec.filesystem("s3", anon=False,
       key=access_key,
       secret=secret_key,
       endpoint_url='https://'+entrypoint_url)
 
-# this syntaxe works we can get content xml files but I would have to precise which subswath I want to decode in case of SLC
-# safe2 = 's3:///eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE'
-safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/18/S1A_IW_GRDH_1SSH_20240418T080141_20240418T080210_053485_067D74_C073.SAFE'
-# safe2 = conf['s3_iw_grd_path']
-option = 'kwargs'
-if option == 'kwargs':
-    storage_options = {"anon": False, "client_kwargs": {"endpoint_url": 'https://'+entrypoint_url, 'aws_access_key_id':access_key,
-    'aws_secret_access_key':secret_key}}
-    t0 = time.time()
-    sub_reader = Sentinel1Reader(safe2,backend_kwargs={"storage_options": storage_options})
-    elapse_t = time.time()-t0
-    print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
-else:
-    # this solution is not supported.
-    sub_reader = Sentinel1Reader(s3.get_mapper(safe2)) # botocore.errorfactory.NoSuchKey: An error occurred (NoSuchKey) when calling the GetObject operation: Unknown
+    # this syntaxe works we can get content xml files but I would have to precise which subswath I want to decode in case of SLC
+    safe2 = 's3:///eodata/Sentinel-1/SAR/SLC/2019/10/13/S1B_IW_SLC__1SDV_20191013T155948_20191013T160015_018459_022C6B_13A2.SAFE:IW2'
+    safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/20/S1A_IW_GRDH_1SDV_20240420T181712_20240420T181741_053521_067EDF_8CA4.SAFE/'
+    #safe2 = 's3:///eodata/Sentinel-1/SAR/IW_GRDH_1S/2024/04/18/S1A_IW_GRDH_1SSH_20240418T080141_20240418T080210_053485_067D74_C073.SAFE'
+    # safe2 = conf['s3_iw_grd_path']
+    logging.info('safe: %s',safe2)
+    args.option = 'kwargs'
+    if args.option == 'kwargs':
+        storage_options = {"anon": False, "client_kwargs": {"endpoint_url": 'https://'+entrypoint_url, 'aws_access_key_id':access_key,
+        'aws_secret_access_key':secret_key}}
+        t0 = time.time()
+        sub_reader = Sentinel1Reader(safe2,backend_kwargs={"storage_options": storage_options})
+        elapse_t = time.time()-t0
+        print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
+    elif args.option == 'nfs':
+        t0 = time.time()
+        sub_reader = Sentinel1Reader(safe2.replace('s3://',''))
+        elapse_t = time.time()-t0
+        print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
+
+    else:
+        logging.info('S3 mapper given: deprecated solution')
+        # this solution is not supported.
+        sub_reader = Sentinel1Reader(s3.get_mapper(safe2)) # botocore.errorfactory.NoSuchKey: An error occurred (NoSuchKey) when calling the GetObject operation: Unknown
 dt = sub_reader.datatree
 print('out of the reader')
 print(dt)
