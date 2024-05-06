@@ -1,3 +1,4 @@
+import pdb
 from safe_s1 import Sentinel1Reader, getconfig
 import time
 conf = getconfig.get_config()
@@ -11,3 +12,4 @@ dt = sub_reader.datatree
 print('out of the reader')
 print(dt)
 print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
+pdb.set_trace()
