@@ -36,6 +36,9 @@ class Sentinel1Reader:
         self.short_name = ':'.join(name_parts)
         """Like name, but without path"""
         self.path = ':'.join(self.name.split(':')[1:-1])
+        # remove trailing slash in the safe path
+        if self.path[-1]=='/':
+            self.path = self.path.rstrip('/')
         """Dataset path"""
         self.safe = os.path.basename(self.path)
 
@@ -109,7 +112,7 @@ class Sentinel1Reader:
             assert self.dt==self.datatree
         else:
             print('multidataset')
-            raise Exception()
+            # raise Exception()
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """
@@ -519,7 +522,6 @@ class Sentinel1Reader:
                                                                describe=True)
         else :
             ds = xr.Dataset()
-            
         return ds
 
     @property
