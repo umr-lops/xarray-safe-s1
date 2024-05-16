@@ -112,7 +112,7 @@ class Sentinel1Reader:
             assert self.dt==self.datatree
         else:
             print('multidataset')
-            # raise Exception()
+            # there is no error raised here, because we want to let the user access the metadata for multidatasets
 
     def load_digital_number(self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms):
         """
@@ -646,6 +646,7 @@ class Sentinel1Reader:
         """
         tmp = []
         pols = []
+        history = []
         for pol_code, xml_file in self.files['noise'].items():
             #pol = self.files['polarization'].cat.categories[pol_code - 1]
             pol = os.path.basename(xml_file).split('-')[4].upper()
@@ -657,8 +658,10 @@ class Sentinel1Reader:
                 hihi = self.xml_parser.get_var(self.files['noise'].iloc[0], 'noise.range.%s' % varitmp,
                                                describe=True)
                 noise_lut_range_raw_ds[vari].attrs['description'] = hihi
+                history.append(self.xml_parser.get_compound_var(xml_file, 'noise_lut_range_raw', describe=True))
             tmp.append(noise_lut_range_raw_ds)
         ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        ds.attrs['history'] = '\n'.join(history)
         return ds
 
     def get_noise_azi_initial_parameters(self, pol):
