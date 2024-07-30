@@ -1,0 +1,53 @@
+2024-05-15T15:10:26,081 Using pip 24.0 from /home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip (python 3.10)
+2024-05-15T15:10:26,082 Non-user install because site-packages writeable
+2024-05-15T15:10:26,516 Created temporary directory: /tmp/pip-build-tracker-y1kgxux4
+2024-05-15T15:10:26,516 Initialized build tracking at /tmp/pip-build-tracker-y1kgxux4
+2024-05-15T15:10:26,517 Created build tracker: /tmp/pip-build-tracker-y1kgxux4
+2024-05-15T15:10:26,517 Entered build tracker: /tmp/pip-build-tracker-y1kgxux4
+2024-05-15T15:10:26,518 Created temporary directory: /tmp/pip-install-xx2sfgi7
+2024-05-15T15:10:26,520 ERROR: Invalid requirement: '../.gitconfig'
+2024-05-15T15:10:26,520 Hint: It looks like a path. File '../.gitconfig' does not exist.
+2024-05-15T15:10:26,521 Exception information:
+2024-05-15T15:10:26,521 Traceback (most recent call last):
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_vendor/packaging/requirements.py", line 102, in __init__
+2024-05-15T15:10:26,521     req = REQUIREMENT.parseString(requirement_string)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_vendor/pyparsing/util.py", line 256, in _inner
+2024-05-15T15:10:26,521     return fn(self, *args, **kwargs)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_vendor/pyparsing/core.py", line 1190, in parse_string
+2024-05-15T15:10:26,521     raise exc.with_traceback(None)
+2024-05-15T15:10:26,521 pip._vendor.pyparsing.exceptions.ParseException: , found '.'  (at char 0), (line:1, col:1)
+2024-05-15T15:10:26,521 
+2024-05-15T15:10:26,521 During handling of the above exception, another exception occurred:
+2024-05-15T15:10:26,521 
+2024-05-15T15:10:26,521 Traceback (most recent call last):
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/req/constructors.py", line 367, in _parse_req_string
+2024-05-15T15:10:26,521     req = get_requirement(req_as_string)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/utils/packaging.py", line 45, in get_requirement
+2024-05-15T15:10:26,521     return Requirement(req_string)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_vendor/packaging/requirements.py", line 104, in __init__
+2024-05-15T15:10:26,521     raise InvalidRequirement(
+2024-05-15T15:10:26,521 pip._vendor.packaging.requirements.InvalidRequirement: Parse error at "'../.gitc'": 
+2024-05-15T15:10:26,521 
+2024-05-15T15:10:26,521 During handling of the above exception, another exception occurred:
+2024-05-15T15:10:26,521 
+2024-05-15T15:10:26,521 Traceback (most recent call last):
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/cli/base_command.py", line 180, in exc_logging_wrapper
+2024-05-15T15:10:26,521     status = run_func(*args)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/cli/req_command.py", line 245, in wrapper
+2024-05-15T15:10:26,521     return func(self, options, args)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/commands/install.py", line 342, in run
+2024-05-15T15:10:26,521     reqs = self.get_requirements(args, options, finder, session)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/cli/req_command.py", line 411, in get_requirements
+2024-05-15T15:10:26,521     req_to_add = install_req_from_line(
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/req/constructors.py", line 421, in install_req_from_line
+2024-05-15T15:10:26,521     parts = parse_req_from_line(name, line_source)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/req/constructors.py", line 395, in parse_req_from_line
+2024-05-15T15:10:26,521     req: Optional[Requirement] = _parse_req_string(req_as_string)
+2024-05-15T15:10:26,521   File "/home1/datawork/vlheureu/conda-env/xsar_N3/lib/python3.10/site-packages/pip/_internal/req/constructors.py", line 381, in _parse_req_string
+2024-05-15T15:10:26,521     raise InstallationError(msg)
+2024-05-15T15:10:26,521 pip._internal.exceptions.InstallationError: Invalid requirement: '../.gitconfig'
+2024-05-15T15:10:26,521 Hint: It looks like a path. File '../.gitconfig' does not exist.
+2024-05-15T15:10:26,622 Remote version of pip: 24.0
+2024-05-15T15:10:26,623 Local version of pip:  24.0
+2024-05-15T15:10:26,625 Was pip installed by pip? False
+2024-05-15T15:10:26,625 Removed build tracker: '/tmp/pip-build-tracker-y1kgxux4'

@@ -151,6 +151,7 @@ xpath_mappings = {
         
         'aux_cal': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'aux_pp1': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_PP1"]/@name'),
+        'aux_ins': (scalar, '//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource/safe:processing/safe:resource[@role="AUX_INS"]/@name'),
 
         'aux_cal_sl2': (scalar,'//metadataSection/metadataObject/metadataWrap/xmlData/safe:processing/safe:resource[@role="AUX_CAL"]/@name'),
         'annotation_files': (
@@ -182,6 +183,9 @@ xpath_mappings = {
         'xsd_overlay_file': (
             normpath,
             '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MapOverlaySchema"]/metadataReference/@href'),
+        'instrument_configuration_id': (scalar, 
+            '//s1sarl1:standAloneProductInformation/s1sarl1:instrumentConfigurationID/text()', 
+            )
     },
     'calibration': {
         'polarization': (scalar, '/calibration/adsHeader/polarisation'),
@@ -901,7 +905,9 @@ compounds_vars = {
         'stop_date': 'manifest.stop_date',
         'footprints': 'manifest.footprints',
         'aux_cal': 'manifest.aux_cal',
-        'aux_pp1': 'manifest.aux_pp1'
+        'aux_pp1': 'manifest.aux_pp1',
+        'aux_ins': 'manifest.aux_ins',
+        'icid' : 'manifest.instrument_configuration_id'
     },
     'safe_attributes_sl2': {
         'ipf_version': 'manifest.ipf_version',
