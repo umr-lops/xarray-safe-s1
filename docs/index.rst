@@ -13,12 +13,12 @@ Overview
 ........
 
     **safe_s1** rely on `xarray.open_rasterio` and `rasterio` to read *digital_number* from SAFE
-    product to return an xarray-datatree.
+    product to return an xarray.datatree.
 
     Luts are decoded from xml files following `ESA Sentinel-1 Product Specification`_.
 
 
-    `safe_s1.metadata.Sentinel1reader` is the main class and contains a xarray-datatree with the useful data. In the following example, you will find some additional functions and properties that can be useful.
+    `safe_s1.metadata.Sentinel1reader` is the main class and contains a xarray.datatree with the useful data. In the following example, you will find some additional functions and properties that can be useful.
 
 Examples
 ........

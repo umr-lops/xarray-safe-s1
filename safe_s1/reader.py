@@ -12,7 +12,6 @@ from rioxarray import rioxarray
 from . import sentinel1_xml_mappings
 from .xml_parser import XmlParser
 import xarray as xr
-import datatree
 import pandas as pd
 import warnings
 
@@ -108,7 +107,7 @@ class Sentinel1Reader:
                 'antenna_pattern':self.antenna_pattern,
                 'swath_merging': self.swath_merging
             }
-            self.dt = datatree.DataTree.from_dict(self._dict)
+            self.dt = xr.DataTree.from_dict(self._dict)
             assert self.dt==self.datatree
         else:
             print('multidataset')
@@ -341,7 +340,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        datatree.DataTree
+        xr.DataTree
             Contains data from the reader
         """
         return self.dt
