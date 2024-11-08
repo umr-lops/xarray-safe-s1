@@ -6,7 +6,6 @@ dependencies = [
     "geopandas",
     "numpy",
     "xarray",
-    "xarray-datatree",
     "lxml",
     "rioxarray",
     "jmespath",
