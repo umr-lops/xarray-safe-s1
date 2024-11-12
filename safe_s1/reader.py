@@ -8,9 +8,9 @@ import rasterio
 import yaml
 from affine import Affine
 from rioxarray import rioxarray
-
-from . import sentinel1_xml_mappings
-from .xml_parser import XmlParser
+import logging
+from safe_s1 import sentinel1_xml_mappings
+from safe_s1.xml_parser import XmlParser
 import xarray as xr
 import pandas as pd
 import warnings
@@ -19,6 +19,7 @@ import warnings
 class Sentinel1Reader:
 
     def __init__(self, name, backend_kwargs=None):
+        logging.debug('input name: %s',name)
         if not isinstance(name, (str, os.PathLike)):
            raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
         # gdal dataset name
@@ -28,13 +29,19 @@ class Sentinel1Reader:
         """Gdal dataset name"""
         name_parts = self.name.split(':')
         if len(name_parts) > 3:
+            logging.debug('windows case')
             # windows might have semicolon in path ('c:\...')
             name_parts[1] = ':'.join(name_parts[1:-1])
             del name_parts[2:-1]
         name_parts[1] = os.path.basename(name_parts[1])
         self.short_name = ':'.join(name_parts)
+        logging.debug('short_name : %s',self.short_name)
         """Like name, but without path"""
-        self.path = ':'.join(self.name.split(':')[1:-1])
+        if len(name_parts) == 2:
+            self.path = self.name.split(':')[1]
+        else:
+            self.path = ':'.join(self.name.split(':')[1:-1])
+        logging.debug('path: %s',self.path)
         # remove trailing slash in the safe path
         if self.path[-1]=='/':
             self.path = self.path.rstrip('/')

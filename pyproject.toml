@@ -5,7 +5,7 @@ license = {text = "MIT"}
 dependencies = [
     "geopandas",
     "numpy",
-    "xarray",
+    "xarray>=2024.10.0",
     "lxml",
     "rioxarray",
     "jmespath",
