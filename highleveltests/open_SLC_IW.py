@@ -11,5 +11,5 @@ elapse_t = time.time()-t0
 dt = sub_reader.datatree
 print('out of the reader')
 print(dt)
-print('time to read the SAFE through S3: %1.2f sec'%elapse_t)
+print('time to read the SAFE through nfs: %1.2f sec'%elapse_t)
 pdb.set_trace()
