@@ -29,12 +29,9 @@ dependencies:
   - numpy
   - pandas
   - shapely
-  - datetime
   - geopandas
   - affine
   - pyproj
   # processing
-  - os
-  - io
   - lxml
   - jmespath
