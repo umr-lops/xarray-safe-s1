@@ -2,7 +2,7 @@ name: xarray-safe-s1-tests
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python
   # development
   - ipython
   - pre-commit
@@ -14,6 +14,7 @@ dependencies:
   # testing
   - pytest
   - pytest-reportlog
+  - pytest-cov
   - hypothesis
   - coverage
   # I/O
@@ -29,12 +30,9 @@ dependencies:
   - numpy
   - pandas
   - shapely
-  - datetime
   - geopandas
   - affine
   - pyproj
   # processing
-  - os
-  - io
   - lxml
   - jmespath

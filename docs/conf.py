@@ -16,16 +16,16 @@ root_doc = "index"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autosummary',
-    'sphinx.ext.autodoc',
+    "sphinx.ext.autosummary",
+    "sphinx.ext.autodoc",
     "myst_parser",
     "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "IPython.sphinxext.ipython_directive",
     "IPython.sphinxext.ipython_console_highlighting",
-    'nbsphinx',
-    'jupyter_sphinx',
-    'sphinx.ext.napoleon'
+    "nbsphinx",
+    "jupyter_sphinx",
+    "sphinx.ext.napoleon",
 ]
 
 extlinks = {
@@ -36,9 +36,9 @@ extlinks = {
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
-html_style = 'css/xsar.css'
+html_style = "css/xsar.css"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -84,12 +84,12 @@ intersphinx_mapping = {
     "dask": ("https://docs.dask.org/en/latest", None),
     "xarray": ("https://docs.xarray.dev/en/latest/", None),
     "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
-    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None)
+    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None),
 }
 
 html_theme_options = {
-    'navigation_depth': 4,  # FIXME: doesn't work as expeted: should expand side menu
-    'collapse_navigation': False # FIXME: same as above
+    "navigation_depth": 4,  # FIXME: doesn't work as expeted: should expand side menu
+    "collapse_navigation": False,  # FIXME: same as above
 }
 
 # If true, links to the reST sources are added to the pages.
@@ -97,8 +97,8 @@ html_show_sourcelink = False
 
 nbsphinx_allow_errors = False
 
-nbsphinx_execute = 'always'
+nbsphinx_execute = "always"
 
 nbsphinx_timeout = 300
 
-today_fmt = '%b %d %Y at %H:%M'
+today_fmt = "%b %d %Y at %H:%M"

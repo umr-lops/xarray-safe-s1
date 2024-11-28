@@ -8,4 +8,3 @@ API reference
 
     .. autoclass:: Sentinel1Reader
         :members:
-
