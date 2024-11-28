@@ -1,4 +1,5 @@
 import traceback
+from safe_s1.reader import Sentinel1Reader
 
 try:
     from importlib import metadata
