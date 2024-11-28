@@ -1,12 +1,13 @@
-from lxml import objectify
-import jmespath
 import logging
-from collections.abc import Iterable
 import re
-import yaml
+from collections.abc import Iterable
 from io import BytesIO
 
-logger = logging.getLogger('xsar.xml_parser')
+import jmespath
+import yaml
+from lxml import objectify
+
+logger = logging.getLogger("xsar.xml_parser")
 logger.addHandler(logging.NullHandler())
 
 
@@ -41,7 +42,7 @@ class XmlParser:
         self._mapper = mapper
 
     def __del__(self):
-        logger.debug('__del__ XmlParser')
+        logger.debug("__del__ XmlParser")
 
     def getroot(self, xml_file):
         """return xml root object from xml_file. (also update self._namespaces with fetched ones)"""
@@ -57,7 +58,10 @@ class XmlParser:
         """
 
         xml_root = self.getroot(xml_file)
-        result = [getattr(e, 'pyval', e) for e in xml_root.xpath(path, namespaces=self._namespaces)]
+        result = [
+            getattr(e, "pyval", e)
+            for e in xml_root.xpath(path, namespaces=self._namespaces)
+        ]
         return result
 
     def get_var(self, xml_file, jpath, describe=False):
@@ -91,7 +95,9 @@ class XmlParser:
             return xpath
 
         if not isinstance(xpath, str):
-            raise NotImplementedError('Non leaf xpath of type "%s" instead of str' % type(xpath).__name__)
+            raise NotImplementedError(
+                'Non leaf xpath of type "%s" instead of str' % type(xpath).__name__
+            )
 
         result = self.xpath(xml_file, xpath)
         if func is not None:
@@ -127,18 +133,22 @@ class XmlParser:
         if describe:
             # keep only informative parts in filename
             # sub SAFE path
-            minifile = re.sub('.*SAFE/', '', xml_file)
-            minifile = re.sub(r'-.*\.xml', '.xml', minifile)
+            minifile = re.sub(".*SAFE/", "", xml_file)
+            minifile = re.sub(r"-.*\.xml", ".xml", minifile)
 
         var_object = self._compounds_vars[var_name]
 
         func = None
-        if isinstance(var_object, dict) and 'func' in var_object and callable(var_object['func']):
-            func = var_object['func']
-            if isinstance(var_object['args'], tuple):
-                args = var_object['args']
+        if (
+            isinstance(var_object, dict)
+            and "func" in var_object
+            and callable(var_object["func"])
+        ):
+            func = var_object["func"]
+            if isinstance(var_object["args"], tuple):
+                args = var_object["args"]
             else:
-                raise ValueError('args must be a tuple when func is called')
+                raise ValueError("args must be a tuple when func is called")
         else:
             args = var_object
 
@@ -164,6 +174,3 @@ class XmlParser:
             return description
         else:
             return result
-
-    def __del__(self):
-        logger.debug('__del__ XmlParser')
