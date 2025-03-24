@@ -240,7 +240,7 @@ xpath_mappings = {
             '/xfdu:XFDU/metadataSection/metadataObject[@ID="s1Level1MapOverlaySchema"]/metadataReference/@href',
         ),
         "instrument_configuration_id": (
-            scalar,
+            scalar_int,
             "//s1sarl1:standAloneProductInformation/s1sarl1:instrumentConfigurationID/text()",
         ),
     },
