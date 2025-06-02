@@ -1,5 +1,6 @@
 import logging
 import os
+import pdb
 import re
 
 import dask
@@ -295,7 +296,9 @@ class Sentinel1Reader:
             dn = dn.assign_coords({"line": line, "sample": sample})
 
         # for GTiff driver, pols are already ordered. just rename them
-        dn = dn.assign_coords(pol=self.manifest_attrs["polarizations"])
+        # fix 2 June 2025: https://github.com/umr-lops/xsar/issues/254
+        polas = [str(uu) for uu in self.manifest_attrs["polarizations"]]
+        dn = dn.assign_coords(pol=polas)
 
         if not all(self.denoised.values()):
             descr = "denoised"
