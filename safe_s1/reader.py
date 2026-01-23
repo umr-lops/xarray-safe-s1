@@ -767,7 +767,8 @@ class Sentinel1Reader:
                     )
                 )
             tmp.append(noise_lut_range_raw_ds)
-        ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        # ds = xr.concat(tmp, pd.Index(pols, name="pol"))
+        ds = xr.concat(tmp, pd.Index(pols, name="pol", dtype=object))
         ds.attrs["history"] = "\n".join(history)
         return ds
 

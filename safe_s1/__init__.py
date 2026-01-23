@@ -1,6 +1,6 @@
 import traceback
 
-from safe_s1.reader import Sentinel1Reader
+from safe_s1.reader import Sentinel1Reader  # noqa: F401
 
 try:
     from importlib import metadata
