@@ -784,7 +784,7 @@ def df_files(annotation_files, measurement_files, noise_files, calibration_files
     # we want them uniques, and compatibles with gdal sentinel driver (ie 'WV_012')
     pols_count = len(set(pols))
     subds_count = len(annotation_files) // pols_count
-    dsid_count = len(set(dsid))
+    # dsid_count = len(set(dsid))
     # if dsid_count != subds_count:
     if "WV" in dsid[0]:
         dsid_rad = dsid[0][:-1]  # WV
