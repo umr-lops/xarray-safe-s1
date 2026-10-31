@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from xml.sax.saxutils import escape
 
 import dask
 import fsspec
@@ -14,6 +15,95 @@ from rioxarray import rioxarray
 
 from safe_s1 import sentinel1_xml_mappings
 from safe_s1.xml_parser import XmlParser
+
+
+def _float_vrt(path, nodata):
+    """
+    VRT (XML string) of the first band of `path`, as float32, with a nodata value.
+
+    Declaring a nodata value makes GDAL average the pixels itself, in float32.
+    Without it, GDAL delegates the resampling to the file, in its own dtype
+    (uint16), and the cell means are rounded to the nearest integer.
+    """
+    with rasterio.open(path) as src:
+        width = src.width
+        height = src.height
+    return f"""<VRTDataset rasterXSize="{width}" rasterYSize="{height}">
+  <VRTRasterBand dataType="Float32" band="1">
+    <NoDataValue>{nodata}</NoDataValue>
+    <SimpleSource>
+      <SourceFilename relativeToVRT="0">{escape(str(path))}</SourceFilename>
+      <SourceBand>1</SourceBand>
+    </SimpleSource>
+  </VRTRasterBand>
+</VRTDataset>"""
+
+
+def _read_on_cells(path, resolution, out_shape, resampling, nodata):
+    """
+    Resample `path` on `out_shape` cells of exactly
+    `resolution["line"]` x `resolution["sample"]` pixels, starting at pixel (0, 0).
+
+    The window is cropped to the whole cells, so that cell k covers pixels
+    [k r, (k + 1) r). Non-integer ratios are supported: GDAL weights the pixels
+    cut by a cell edge.
+    """
+    window = rasterio.windows.Window(
+        0,
+        0,
+        out_shape[1] * resolution["sample"],
+        out_shape[0] * resolution["line"],
+    )
+    with rasterio.open(_float_vrt(path, nodata)) as vrt:
+        return vrt.read(1, out_shape=out_shape, window=window, resampling=resampling)
+
+
+def read_cells(path, resolution, out_shape, resampling):
+    """
+    Resample a measurement file on a grid of whole cells.
+
+    Each cell is the `resampling` mean of the valid pixels it covers, in float32.
+    Pixels at 0 (outside the swath) are not counted; a cell without any valid
+    pixel is 0.
+
+    Parameters
+    ----------
+    path: str
+        measurement file
+    resolution: dict
+        cell size in pixels, like `{"line": 100.0, "sample": 100.0}`
+    out_shape: tuple
+        number of cells `(line, sample)`
+    resampling: rasterio.enums.Resampling
+
+    Returns
+    -------
+    numpy.ndarray
+        shape `(1, line, sample)`, float32
+    """
+    cells = _read_on_cells(path, resolution, out_shape, resampling, nodata=0)
+    return cells[np.newaxis]
+
+
+def read_valid_fraction(path, resolution, out_shape):
+    """
+    Fraction of non-zero pixels in each cell of the grid used by `read_cells`.
+
+    It is the mean with the zeros counted divided by the mean without them
+    (= valid pixels / all pixels). For the mean with the zeros counted, the nodata
+    value is -1, which never occurs in the file, so that GDAL still averages in
+    float32.
+
+    Returns
+    -------
+    numpy.ndarray
+        shape `(line, sample)`, float32, 0 outside the swath, 1 for a full cell
+    """
+    average = rasterio.enums.Resampling.average
+    mean_all = _read_on_cells(path, resolution, out_shape, average, nodata=-1)
+    mean_valid = _read_on_cells(path, resolution, out_shape, average, nodata=0)
+    fraction = mean_all / np.where(mean_valid > 0, mean_valid, 1)
+    return np.where(mean_valid > 0, fraction, 0).astype("float32")
 
 
 class Sentinel1Reader:
@@ -240,36 +330,20 @@ class Sentinel1Reader:
                 # resolution = dict(line=resolution / self.dataset['sampleSpacing'].values,
                 #                   sample=resolution / self.dataset['lineSpacing'].values)
 
-            # resample the DN at gdal level, before feeding it to the dataset
+            # resample the DN at gdal level, before feeding it to the dataset.
+            # Whole cells only: the pixels left over at the bottom and right edges
+            # (less than one cell) are not used.
             out_shape = (
                 int(rio.height / resolution["line"]),
                 int(rio.width / resolution["sample"]),
             )
-            out_shape_pol = (1,) + out_shape
             # read resampled array in one chunk, and rechunk
             # this doesn't optimize memory, but total size remain quite small
-
-            if isinstance(resolution["line"], int):
-                # legacy behaviour: winsize is the maximum full image size that can be divided  by resolution (int)
-                winsize = (
-                    0,
-                    0,
-                    rio.width // resolution["sample"] * resolution["sample"],
-                    rio.height // resolution["line"] * resolution["line"],
-                )
-                window = rasterio.windows.Window(*winsize)
-            else:
-                window = None
-
             dn = xr.concat(
                 [
                     xr.DataArray(
                         dask.array.from_array(
-                            rasterio.open(f).read(
-                                out_shape=out_shape_pol,
-                                resampling=resampling,
-                                window=window,
-                            ),
+                            read_cells(f, resolution, out_shape, resampling),
                             chunks=chunks_rio,
                         ),
                         dims=tuple(map_dims.keys()),
@@ -281,15 +355,16 @@ class Sentinel1Reader:
                 ],
                 "pol",
             ).chunk(chunks)
+            # the swath border is the same in all polarisations
+            valid_fraction = read_valid_fraction(
+                files_measurement[0], resolution, out_shape
+            )
 
-            # create coordinates at box center
+            # coordinates at cell center: cell k covers pixels [k r, (k + 1) r)
             translate = Affine.translation(
                 (resolution["sample"] - 1) / 2, (resolution["line"] - 1) / 2
             )
-            scale = Affine.scale(
-                rio.width // resolution["sample"] * resolution["sample"] / out_shape[1],
-                rio.height // resolution["line"] * resolution["line"] / out_shape[0],
-            )
+            scale = Affine.scale(resolution["sample"], resolution["line"])
             sample, _ = translate * scale * (dn.sample, 0)
             _, line = translate * scale * (0, dn.line)
             dn = dn.assign_coords({"line": line, "sample": sample})
@@ -319,6 +394,16 @@ class Sentinel1Reader:
         astype = _dtypes.get(var_name)
         if astype is not None:
             ds = ds.astype(_dtypes[var_name])
+        if resolution is not None:
+            ds["valid_fraction"] = xr.DataArray(
+                valid_fraction,
+                dims=("line", "sample"),
+                coords={"line": ds.line, "sample": ds.sample},
+                attrs={
+                    "comment": "fraction of non-zero pixels in the cell "
+                    "(0: outside the swath, 1: full cell)"
+                },
+            )
 
         return res, ds
 
