@@ -217,17 +217,51 @@ class Sentinel1Reader:
         self, resolution=None, chunks=None, resampling=rasterio.enums.Resampling.rms
     ):
         """
-        load digital_number from self.sar_meta.files['measurement'], as an `xarray.Dataset`.
+        Load the digital numbers of the measurement files (all polarisations) as an `xarray.Dataset`.
+
+        With `resolution=None`, the files are read lazily at full resolution, in uint16.
+
+        Otherwise, the files are resampled while reading, on a grid of whole cells of
+        `r_line` x `r_sample` pixels (`r` is the cell size in pixels):
+
+        * cell `k` covers the pixels `[k * r, (k + 1) * r)`, and its coordinate is the
+          cell center `k * r + (r - 1) / 2`, in pixels of the full resolution image;
+        * there are `int(size / r)` cells: the pixels left over at the bottom and right
+          edges of the image (less than one cell) are not used;
+        * the pixels at 0 (outside the swath) are not counted: a cell straddling the
+          swath border is the `resampling` mean of its valid pixels only, and a cell
+          without any valid pixel is 0;
+        * the cell values are kept in float32, they are not rounded to integers;
+        * `r` may be non-integer (e.g. 40 m pixels at "100m" give 2.5 pixels): a pixel
+          cut by a cell edge is weighted by the part of it inside the cell.
+
+        The dataset also holds `valid_fraction`: the fraction of non-zero pixels in each
+        cell (0: outside the swath, 1: full cell), computed from the first measurement
+        file.
 
         Parameters
         ----------
         resolution: None, numbers.Number, str or dict
+            cell size, None by default:
+
+            * None: full resolution, no resampling;
+            * str ending with "m", like "1000m": size in meters, converted to pixels with
+              `pixel_line_m` and `pixel_sample_m`;
+            * number: size in meters, as for a str;
+            * dict like `{"line": 100, "sample": 100}`: size in pixels.
+        chunks: dict
+            dask chunks, with keys "line" and "sample", like `{"line": 5000, "sample": 5000}`.
+            A "pol" key is set to 1.
         resampling: rasterio.enums.Resampling
+            mean used for the cells, only with a `resolution`. `rasterio.enums.Resampling.rms` by default.
 
         Returns
         -------
-        (float, xarray.Dataset)
-            tuple that contains resolution and dataset (possibly dual-pol), with basic coords/dims naming convention
+        (float or None, xarray.Dataset)
+
+            * the resolution in meters if `resolution` is a str, None otherwise;
+            * dataset with `digital_number` (dims "pol", "line", "sample") and, if
+              resampled, `valid_fraction` (dims "line", "sample").
         """
 
         def get_glob(strlist):
