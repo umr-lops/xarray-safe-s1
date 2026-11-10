@@ -81,7 +81,7 @@ def test_cell_across_the_swath_border_is_not_darkened(tmp_path, border):
     range (far range) or in azimuth (end of the datatake). Cells of 10 pixels.
 
     Cell 13 (pixels 130 to 139) is half in the swath: its value is the sea value, 50,
-    and its valid_fraction 0.5. Cells 14 to 19 are outside the swath: 0."""
+    and its valid_pixel_fraction 0.5. Cells 14 to 19 are outside the swath: 0."""
     array = np.full((200, 200), 50, dtype=np.uint16)
     array[:, 135:] = 0
     if border == "end_of_datatake":
@@ -103,11 +103,11 @@ def test_cell_across_the_swath_border_is_not_darkened(tmp_path, border):
     np.testing.assert_array_equal(fraction[:, 14:], 0)
 
 
-def test_valid_fraction_of_an_ew_cell_across_the_swath_border(tmp_path):
+def test_valid_pixel_fraction_of_an_ew_cell_across_the_swath_border(tmp_path):
     """EW at 100 m (2.5 pixels per cell), the swath ends at sample 136.
 
     Cell 54 covers samples 135 to 137.5: pixel 135 is valid, pixel 136 and half of
-    pixel 137 are outside the swath. 1 valid pixel out of 2.5: valid_fraction = 0.4.
+    pixel 137 are outside the swath. 1 valid pixel out of 2.5: valid_pixel_fraction = 0.4.
     Its value is still the sea value, 50."""
     array = np.full((200, 200), 50, dtype=np.uint16)
     array[:, 136:] = 0

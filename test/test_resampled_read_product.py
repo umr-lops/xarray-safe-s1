@@ -52,11 +52,11 @@ def rms_of_valid_pixels(pixels):
 
 
 def test_full_resolution_is_the_file_itself(reader, measurement):
-    """Without resolution, the pixels are the ones of the file, in uint16, no valid_fraction."""
+    """Without resolution, the pixels are the ones of the file, in uint16, no valid_pixel_fraction."""
     res, ds = reader.load_digital_number(resolution=None, chunks=dict(CHUNKS))
 
     assert res is None
-    assert "valid_fraction" not in ds
+    assert "valid_pixel_fraction" not in ds
     assert ds.sizes["line"] == 16778
     assert ds.sizes["sample"] == 25187
     assert ds.digital_number.dtype == np.uint16
@@ -86,15 +86,19 @@ def test_grid_at_1000m(at_1000m):
     assert ds.sample[0] == 49.5
     assert ds.sample[-1] == 25049.5
     assert ds.digital_number.dtype == np.float32
-    assert ds.valid_fraction.dtype == np.float32
+    assert ds.valid_pixel_fraction.dtype == np.float32
+    assert ds.valid_pixel_fraction.dims == ("pol", "line", "sample")
+    assert ds.valid_pixel_fraction.attrs["units"] == "1"
 
 
-def test_valid_fraction_along_the_zeros_at_the_image_start(at_1000m):
+def test_valid_pixel_fraction_along_the_zeros_at_the_image_start(at_1000m):
     """5 lines and 5 samples of zeros at the start of the image:
     corner cell 90.25 % valid, rest of the first row and column 95 %, all other cells 100 %.
-    """
+    The swath border is the same in VV and VH: one fraction for both."""
     _, ds = at_1000m
-    fraction = ds.valid_fraction.values
+    fraction = ds.valid_pixel_fraction.sel(pol="VV").values
+
+    np.testing.assert_array_equal(ds.valid_pixel_fraction.sel(pol="VH"), fraction)
 
     np.testing.assert_allclose(fraction[0, 0], 0.9025, atol=1e-6)
     np.testing.assert_allclose(fraction[0, 1:], 0.95, atol=1e-6)
@@ -122,7 +126,7 @@ def test_three_cells_checked_by_hand(at_1000m):
 
 def test_any_cell_is_the_rms_of_its_own_pixels(at_1000m, measurement):
     """Same check on the borders of the scene and on 20 cells taken at random:
-    each cell is the rms of the non-zero pixels it covers, and valid_fraction is
+    each cell is the rms of the non-zero pixels it covers, and valid_pixel_fraction is
     the fraction of these pixels."""
     _, ds = at_1000m
     n = ds.sizes["line"]
@@ -130,10 +134,9 @@ def test_any_cell_is_the_rms_of_its_own_pixels(at_1000m, measurement):
     rng = np.random.default_rng(0)
     cells = [(0, 0), (0, m - 1), (n - 1, 0), (n - 1, m - 1), (0, m // 2), (n // 2, 0)]
     cells += [(rng.integers(n), rng.integers(m)) for _ in range(20)]
-    fraction = ds.valid_fraction.values
-
     for pol, path in measurement.items():
         dn = ds.digital_number.sel(pol=pol).values
+        fraction = ds.valid_pixel_fraction.sel(pol=pol).values
         for i, j in cells:
             pixels = pixels_of_cell(path, i, j)
             np.testing.assert_allclose(
@@ -161,4 +164,6 @@ def test_1000m_can_be_written_three_ways(reader, at_1000m, resolution):
     np.testing.assert_array_equal(ds.line, expected.line)
     np.testing.assert_array_equal(ds.sample, expected.sample)
     np.testing.assert_array_equal(ds.digital_number, expected.digital_number)
-    np.testing.assert_array_equal(ds.valid_fraction, expected.valid_fraction)
+    np.testing.assert_array_equal(
+        ds.valid_pixel_fraction, expected.valid_pixel_fraction
+    )

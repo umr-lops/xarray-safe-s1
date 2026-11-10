@@ -235,9 +235,11 @@ class Sentinel1Reader:
         * `r` may be non-integer (e.g. 40 m pixels at "100m" give 2.5 pixels): a pixel
           cut by a cell edge is weighted by the part of it inside the cell.
 
-        The dataset also holds `valid_fraction`: the fraction of non-zero pixels in each
-        cell (0: outside the swath, 1: full cell), computed from the first measurement
-        file.
+        The dataset also holds `valid_pixel_fraction`: the fraction of non-zero pixels in
+        each cell (0: outside the swath, 1: full cell). Since IPF 2.90, the pixels outside
+        the swath are set to 0 by the IPF, the same in all polarisations: the fraction is
+        computed on the co-polarisation (VV or HH) and given for each polarisation.
+        Before IPF 2.90, the near range border holds low non-zero values, counted as valid.
 
         Parameters
         ----------
@@ -260,8 +262,8 @@ class Sentinel1Reader:
         (float or None, xarray.Dataset)
 
             * the resolution in meters if `resolution` is a str, None otherwise;
-            * dataset with `digital_number` (dims "pol", "line", "sample") and, if
-              resampled, `valid_fraction` (dims "line", "sample").
+            * dataset with `digital_number` and, if resampled, `valid_pixel_fraction`
+              (dims "pol", "line", "sample").
         """
 
         def get_glob(strlist):
@@ -389,10 +391,14 @@ class Sentinel1Reader:
                 ],
                 "pol",
             ).chunk(chunks)
-            # the swath border is the same in all polarisations
-            valid_fraction = read_valid_fraction(
-                files_measurement[0], resolution, out_shape
+            # the swath border is the same in all polarisations (zeros set by the
+            # IPF): one read, on the co-polarisation, which has the strongest signal
+            pols = [str(p) for p in self.manifest_attrs["polarizations"]]
+            co_pol_file = next(
+                (f for f, p in zip(files_measurement, pols) if p[0] == p[1]),
+                files_measurement[0],
             )
+            valid_fraction = read_valid_fraction(co_pol_file, resolution, out_shape)
 
             # coordinates at cell center: cell k covers pixels [k r, (k + 1) r)
             translate = Affine.translation(
@@ -429,14 +435,21 @@ class Sentinel1Reader:
         if astype is not None:
             ds = ds.astype(_dtypes[var_name])
         if resolution is not None:
-            ds["valid_fraction"] = xr.DataArray(
-                valid_fraction,
-                dims=("line", "sample"),
-                coords={"line": ds.line, "sample": ds.sample},
-                attrs={
-                    "comment": "fraction of non-zero pixels in the cell "
-                    "(0: outside the swath, 1: full cell)"
-                },
+            ds["valid_pixel_fraction"] = (
+                xr.DataArray(
+                    valid_fraction,
+                    dims=("line", "sample"),
+                    coords={"line": ds.line, "sample": ds.sample},
+                    attrs={
+                        "long_name": "fraction of valid pixels in the cell",
+                        "units": "1",
+                        "comment": "pixels at 0 (outside the swath) are not valid; "
+                        "0: outside the swath, 1: full cell; "
+                        "computed on the co-polarisation, the same for all polarisations",
+                    },
+                )
+                .expand_dims(pol=ds.pol.values)
+                .copy()
             )
 
         return res, ds
