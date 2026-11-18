@@ -32,6 +32,7 @@ Examples
     Don't use them for real science !
 
 * :doc:`examples/simple_tutorial`
+* :doc:`examples/resampled_read`
 
 
 Reference
@@ -61,6 +62,7 @@ Last documentation build: |today|
    :caption: Examples
 
    examples/simple_tutorial
+   examples/resampled_read
 
 
 .. toctree::
