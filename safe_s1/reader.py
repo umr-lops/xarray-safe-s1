@@ -79,6 +79,7 @@ class Sentinel1Reader:
         """True if multi dataset"""
         self._datasets_names = list(self.safe_files["dsid"].sort_index().unique())
         self.xsd_definitions = self.get_annotation_definitions()
+        self.xsd_units = self.get_annotation_units()
         if self.name.endswith(":") and len(self._datasets_names) == 1:
             self.name = self._datasets_names[0]
         self.dsid = self.name.split(":")[-1]
@@ -411,6 +412,7 @@ class Sentinel1Reader:
                 da_var.attrs["history"] = self.xml_parser.get_compound_var(
                     self.files["annotation"].iloc[0], var_name, describe=True
                 )
+                da_var.attrs["units"] = self.xsd_units.get(var_name, None)
                 da_var_list.append(da_var)
 
             return xr.merge(da_var_list)
@@ -639,6 +641,25 @@ class Sentinel1Reader:
                 final_dict[mykey] = myvalue
 
         return final_dict
+
+    def get_annotation_units(self):
+        """
+        Get variable units from annotation definitions (inside square brackets : "[UNIT]")
+
+        Returns
+        -------
+        dict
+            annotation units
+        """
+        definitions = self.xsd_definitions
+
+        units = {}
+        for key, definition in definitions.items():
+            match = re.search(r'\[([^\]]*)\]', str(definition))
+            if match and match.group(1):
+                units[key] = match.group(1)
+
+        return units
 
     @property
     def get_calibration_luts(self):
