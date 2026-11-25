@@ -55,6 +55,7 @@ Last documentation build: |today|
    :caption: Getting Started
 
    installing
+   remote
 
 
 .. toctree::

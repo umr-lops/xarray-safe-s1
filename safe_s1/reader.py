@@ -13,7 +13,7 @@ import yaml
 from affine import Affine
 from rioxarray import rioxarray
 
-from safe_s1 import sentinel1_xml_mappings
+from safe_s1 import remote, sentinel1_xml_mappings
 from safe_s1.xml_parser import XmlParser
 
 
@@ -161,6 +161,8 @@ class Sentinel1Reader:
             backend_kwargs = {}
 
         storage_options = backend_kwargs.get("storage_options", {})
+        self._gdal_env = remote.gdal_env_options(self.path, storage_options)
+        """keyword arguments of `rasterio.Env` to read the measurement files with GDAL"""
 
         mapper = fsspec.get_mapper(self.path, **storage_options)
         self.xml_parser = XmlParser(
@@ -337,10 +339,16 @@ class Sentinel1Reader:
 
         # Add root to path
         files_measurement = self.files["measurement"].copy()
-        files_measurement = [os.path.join(self.path, f) for f in files_measurement]
+        if remote.is_remote(self.path):
+            files_measurement = [f"{self.path}/{f}" for f in files_measurement]
+        else:
+            files_measurement = [os.path.join(self.path, f) for f in files_measurement]
+        # paths for GDAL: /vsis3/... for a remote SAFE
+        gdal_files = [remote.gdal_path(f) for f in files_measurement]
 
-        # arbitrary rio object, to get shape, etc ... (will not be used to read data)
-        rio = rasterio.open(files_measurement[0])
+        # image shape (the data is read below)
+        with rasterio.Env(**self._gdal_env), rasterio.open(gdal_files[0]) as rio:
+            height, width = rio.height, rio.width
 
         chunks["pol"] = 1
         # sort chunks keys like map_dims
@@ -355,15 +363,25 @@ class Sentinel1Reader:
             # using tiff driver: need to read individual tiff and concat them
             # riofiles['rio'] is ordered like self.sar_meta.manifest_attrs['polarizations']
 
-            dn = xr.concat(
-                [
+            if remote.is_remote(self.path):
+                # each dask block is read in its own rasterio.Env (credentials, endpoint)
+                bands = [
+                    xr.DataArray(
+                        remote.open_band(
+                            f, self._gdal_env, (chunks_rio["y"], chunks_rio["x"])
+                        )[np.newaxis],
+                        dims=("band", "y", "x"),
+                    )
+                    for f in gdal_files
+                ]
+            else:
+                bands = [
                     rioxarray.open_rasterio(
                         f, chunks=chunks_rio, parse_coordinates=False
                     )
-                    for f in files_measurement
-                ],
-                "band",
-            ).assign_coords(
+                    for f in gdal_files
+                ]
+            dn = xr.concat(bands, "band").assign_coords(
                 band=np.arange(len(self.manifest_attrs["polarizations"])) + 1
             )
 
@@ -389,35 +407,34 @@ class Sentinel1Reader:
             # Whole cells only: the pixels left over at the bottom and right edges
             # (less than one cell) are not used.
             out_shape = (
-                int(rio.height / resolution["line"]),
-                int(rio.width / resolution["sample"]),
+                int(height / resolution["line"]),
+                int(width / resolution["sample"]),
             )
-            # read resampled array in one chunk, and rechunk
-            # this doesn't optimize memory, but total size remain quite small
-            dn = xr.concat(
-                [
-                    xr.DataArray(
-                        dask.array.from_array(
-                            read_cells(f, resolution, out_shape, resampling),
-                            chunks=chunks_rio,
-                        ),
-                        dims=tuple(map_dims.keys()),
-                        coords={"pol": [pol]},
-                    )
-                    for f, pol in zip(
-                        files_measurement, self.manifest_attrs["polarizations"]
-                    )
-                ],
-                "pol",
-            ).chunk(chunks)
             # the swath border is the same in all polarisations (zeros set by the
             # IPF): one read, on the co-polarisation, which has the strongest signal
             pols = [str(p) for p in self.manifest_attrs["polarizations"]]
             co_pol_file = next(
-                (f for f, p in zip(files_measurement, pols) if p[0] == p[1]),
-                files_measurement[0],
+                (f for f, p in zip(gdal_files, pols) if p[0] == p[1]),
+                gdal_files[0],
             )
-            valid_fraction = read_valid_fraction(co_pol_file, resolution, out_shape)
+            # read resampled array in one chunk, and rechunk
+            # this doesn't optimize memory, but total size remain quite small
+            with rasterio.Env(**self._gdal_env):
+                cells = [
+                    read_cells(f, resolution, out_shape, resampling) for f in gdal_files
+                ]
+                valid_fraction = read_valid_fraction(co_pol_file, resolution, out_shape)
+            dn = xr.concat(
+                [
+                    xr.DataArray(
+                        dask.array.from_array(cell, chunks=chunks_rio),
+                        dims=tuple(map_dims.keys()),
+                        coords={"pol": [pol]},
+                    )
+                    for cell, pol in zip(cells, self.manifest_attrs["polarizations"])
+                ],
+                "pol",
+            ).chunk(chunks)
 
             # coordinates at cell center: cell k covers pixels [k r, (k + 1) r)
             translate = Affine.translation(
