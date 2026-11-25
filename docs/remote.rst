@@ -54,6 +54,20 @@ translated too, with GDAL credentials from the environment. Filesystems that GDA
 cannot read (like ``memory://``) give a ``NotImplementedError`` when loading the
 digital numbers.
 
+Performance
+-----------
+
+Checked on CDSE from an institute network (see :issue:`80`): the results are identical
+to a local read, and the time is the network transfer.
+
+* Sentinel-1 measurement files are uncompressed tiffs with 1-row strips: a window that
+  is not full width costs about one HTTP request per row. Use full-width chunks, like
+  ``chunks={"line": 1000, "sample": -1}``.
+* ``load_digital_number(resolution=...)`` reads the whole files: for IW or EW products
+  (several hundred MB per polarisation), it is a full download.
+* Reading from S3 pays off for the metadata, WV imagettes, and line blocks of large
+  products.
+
 .. warning::
 
     Never write your keys in a notebook or a script that is shared: read them from
