@@ -106,35 +106,50 @@ def read_valid_fraction(path, resolution, out_shape):
     return np.where(mean_valid > 0, fraction, 0).astype("float32")
 
 
+# dataset id of a SAFE subdataset, see sentinel1_xml_mappings.df_files:
+# 'IW', 'IW1', 'EW5', 'S3', 'WV_012'...
+_DSID_RE = re.compile(r"^[A-Z]{1,2}[0-9]?(_[0-9]{3})?$")
+
+
+def split_dataset_name(name):
+    """
+    Split a dataset name into its SAFE path and its dataset id.
+
+    Parameters
+    ----------
+    name: str or os.PathLike
+        gdal-like name ``SENTINEL1_DS:<path>:<dsid>`` (``<dsid>`` may be empty), or a bare SAFE path.
+        ``<path>`` may contain colons: fsspec URL (``s3://bucket/x.SAFE``), windows drive (``C:\\x.SAFE``).
+
+    Returns
+    -------
+    tuple(str, str)
+        (path without trailing slash, dataset id like 'WV_012', 'IW1', or '' for the whole SAFE)
+    """
+    name = os.fspath(name)
+    rest = name[len("SENTINEL1_DS:") :] if name.startswith("SENTINEL1_DS:") else name
+    path, sep, dsid = rest.rpartition(":")
+    if not sep or not (dsid == "" or _DSID_RE.match(dsid)):
+        # no dataset id: the last colon belongs to the path (URL scheme, windows drive)
+        path, dsid = rest, ""
+    path = path.rstrip("/")
+    if not path:
+        raise ValueError(f"no SAFE path in dataset name {name!r}")
+    return path, dsid
+
+
 class Sentinel1Reader:
     def __init__(self, name, backend_kwargs=None):
         logging.debug("input name: %s", name)
         if not isinstance(name, (str, os.PathLike)):
             raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
-        # gdal dataset name
-        if not name.startswith("SENTINEL1_DS:"):
-            name = "SENTINEL1_DS:%s:" % name
-        self.name = name
+        self.path, dsid = split_dataset_name(name)
+        """Dataset path: local path or fsspec URL (like 's3://bucket/x.SAFE'), without trailing slash"""
+        self.name = f"SENTINEL1_DS:{self.path}:{dsid}"
         """Gdal dataset name"""
-        name_parts = self.name.split(":")
-        if len(name_parts) > 3:
-            logging.debug("windows case")
-            # windows might have semicolon in path ('c:\...')
-            name_parts[1] = ":".join(name_parts[1:-1])
-            del name_parts[2:-1]
-        name_parts[1] = os.path.basename(name_parts[1])
-        self.short_name = ":".join(name_parts)
-        logging.debug("short_name : %s", self.short_name)
+        self.short_name = f"SENTINEL1_DS:{os.path.basename(self.path)}:{dsid}"
         """Like name, but without path"""
-        if len(name_parts) == 2:
-            self.path = self.name.split(":")[1]
-        else:
-            self.path = ":".join(self.name.split(":")[1:-1])
-        logging.debug("path: %s", self.path)
-        # remove trailing slash in the safe path
-        if self.path[-1] == "/":
-            self.path = self.path.rstrip("/")
-        """Dataset path"""
+        logging.debug("name: %s, path: %s", self.name, self.path)
         self.safe = os.path.basename(self.path)
 
         self.path = os.fspath(self.path)
@@ -172,7 +187,7 @@ class Sentinel1Reader:
         self.xsd_units = self.get_annotation_units()
         if self.name.endswith(":") and len(self._datasets_names) == 1:
             self.name = self._datasets_names[0]
-        self.dsid = self.name.split(":")[-1]
+        self.dsid = split_dataset_name(self.name)[1]
         """Dataset identifier (like 'WV_001', 'IW1', 'IW'), or empty string for multidataset"""
 
         try:
@@ -757,9 +772,12 @@ class Sentinel1Reader:
         final_dict = {}
         ds_path_xsd = self.xml_parser.get_compound_var(self.manifest, "xsd_files")
         path_xsd = ds_path_xsd["xsd_product"].values[0]
-        full_path_xsd = os.path.join(self.path, path_xsd)
-        if os.path.exists(full_path_xsd):
+        try:
+            # read through the fsspec mapper: works for local paths and remote URLs
             rootxsd = self.xml_parser.getroot(path_xsd)
+        except KeyError:  # the mapper raises KeyError for a missing file
+            logging.debug("no annotation definitions: %s not found", path_xsd)
+        else:
             mypath = "/xsd:schema/xsd:complexType/xsd:sequence/xsd:element"
 
             for lulu, uu in enumerate(
@@ -787,7 +805,7 @@ class Sentinel1Reader:
 
         units = {}
         for key, definition in definitions.items():
-            match = re.search(r'\[([^\]]*)\]', str(definition))
+            match = re.search(r"\[([^\]]*)\]", str(definition))
             if match and match.group(1):
                 units[key] = match.group(1)
 
