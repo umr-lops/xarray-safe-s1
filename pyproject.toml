@@ -38,6 +38,10 @@ float_to_top = true
 default_section = "THIRDPARTY"
 known_first_party = "safe_s1"
 
+[tool.coverage.run]
+source = ["safe_s1"]
+relative_files = true  # required by python-coverage-comment-action
+
 [tool.coverage.report]
 show_missing = true
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING"]
