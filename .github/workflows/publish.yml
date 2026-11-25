@@ -2,7 +2,7 @@ name: Upload package to PyPI
 
 on:
   release:
-    types: [created]
+    types: [published] # direct release or published draft; drafts alone never upload
 
 jobs:
   publish:
