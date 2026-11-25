@@ -11,6 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   detect-skip-ci-trigger:
     name: "Detect CI Trigger: [skip-ci]"
@@ -20,6 +22,8 @@ jobs:
           github.event_name == 'push' || github.event_name == 'pull_request'
       )
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       triggered: ${{ steps.detect-trigger.outputs.trigger-found }}
     steps:
@@ -38,15 +42,27 @@ jobs:
 
     if: needs.detect-skip-ci-trigger.outputs.triggered == 'false'
 
+    permissions:
+      # forked pull_request runs are downgraded to read-only by GitHub
+      contents: write # push the coverage badge/data to the python-coverage-comment-action-data branch
+      pull-requests: write # coverage comment on pull requests from this repository
+
+    env:
+      # coverage is reported from a single job
+      COVERAGE_JOB: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.13' }}
+
     defaults:
       run:
         shell: bash -l {0}
 
     strategy:
       fail-fast: false
+      # pull requests: oldest and newest supported python on linux only (2 jobs).
+      # push on main: also macOS and Windows with the newest python.
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+        python-version: ["3.10", "3.13"]
+        os: ["ubuntu-latest"]
+        include: ${{ fromJSON(github.event_name == 'pull_request' && '[]' || '[{"os":"macos-latest","python-version":"3.13"},{"os":"windows-latest","python-version":"3.13"}]') }}
 
     steps:
       - name: Checkout the repository
@@ -82,3 +98,17 @@ jobs:
       - name: Run tests
         run: |
           python -m pytest --cov=safe_s1
+
+      - name: Coverage comment and badge
+        id: coverage_comment
+        if: env.COVERAGE_JOB == 'true'
+        uses: py-cov-action/python-coverage-comment-action@v4.5
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Store the pull request comment to be posted
+        uses: actions/upload-artifact@v7
+        if: steps.coverage_comment.outputs.COMMENT_FILE_WRITTEN == 'true'
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt

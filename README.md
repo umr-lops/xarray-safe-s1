@@ -1,4 +1,5 @@
 [![Documentation Status](https://readthedocs.org/projects/xarray-safe-s1/badge/?version=latest)](https://xarray-safe-s1.readthedocs.io/en/latest/?badge=latest)
+[![Coverage](https://raw.githubusercontent.com/umr-lops/xarray-safe-s1/python-coverage-comment-action-data/badge.svg)](https://htmlpreview.github.io/?https://github.com/umr-lops/xarray-safe-s1/blob/python-coverage-comment-action-data/htmlcov/index.html)
 
 # xarray-safe-s1
 
