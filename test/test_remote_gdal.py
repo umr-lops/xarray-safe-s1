@@ -78,6 +78,23 @@ def test_env_options_cdse_like():
         assert rasterio.env.getenv()["AWS_ACCESS_KEY_ID"] == "my-key"
 
 
+def test_env_options_keys_in_client_kwargs():
+    options = remote.gdal_env_options(
+        "s3://eodata/x.SAFE",
+        {
+            "client_kwargs": {
+                "endpoint_url": "https://eodata.dataspace.copernicus.eu",
+                "aws_access_key_id": "my-key",
+                "aws_secret_access_key": "my-secret",
+            },
+        },
+    )
+    assert options["session"].get_credential_options() == {
+        "AWS_ACCESS_KEY_ID": "my-key",
+        "AWS_SECRET_ACCESS_KEY": "my-secret",
+    }
+
+
 def test_env_options_http_endpoint_anon_virtual():
     options = remote.gdal_env_options(
         "s3://b/x.SAFE",

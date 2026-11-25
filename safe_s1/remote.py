@@ -116,6 +116,7 @@ def gdal_env_options(path, storage_options=None):
     s3fs storage option                                      GDAL config option
     ======================================================== ========================================
     ``key``, ``secret``, ``token``                           ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, ``AWS_SESSION_TOKEN``
+    (or ``client_kwargs["aws_access_key_id"]``...)
     ``anon=True``                                            ``AWS_NO_SIGN_REQUEST=YES``
     ``endpoint_url`` or ``client_kwargs["endpoint_url"]``     ``AWS_S3_ENDPOINT``, ``AWS_HTTPS``, ``AWS_VIRTUAL_HOSTING=FALSE``
     ``client_kwargs["region_name"]``                         ``AWS_REGION``
@@ -141,13 +142,15 @@ def gdal_env_options(path, storage_options=None):
     options = {}
     credentials = {}
 
-    for option, gdal_option in (
-        ("key", "AWS_ACCESS_KEY_ID"),
-        ("secret", "AWS_SECRET_ACCESS_KEY"),
-        ("token", "AWS_SESSION_TOKEN"),
+    for option, client_option, gdal_option in (
+        ("key", "aws_access_key_id", "AWS_ACCESS_KEY_ID"),
+        ("secret", "aws_secret_access_key", "AWS_SECRET_ACCESS_KEY"),
+        ("token", "aws_session_token", "AWS_SESSION_TOKEN"),
     ):
-        if storage_options.get(option):
-            credentials[gdal_option] = storage_options[option]
+        # s3fs accepts the keys as its own options, or as botocore client options
+        value = storage_options.get(option) or client_kwargs.get(client_option)
+        if value:
+            credentials[gdal_option] = value
     if storage_options.get("anon"):
         credentials["AWS_NO_SIGN_REQUEST"] = "YES"
 

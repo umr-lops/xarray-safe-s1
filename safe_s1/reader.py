@@ -139,6 +139,27 @@ def split_dataset_name(name):
 
 
 class Sentinel1Reader:
+    """
+    Reader of a Sentinel-1 SAFE product, local or remote.
+
+    Parameters
+    ----------
+    name: str or os.PathLike
+        SAFE path, or dataset name ``SENTINEL1_DS:<path>:<dsid>`` like
+        ``SENTINEL1_DS:/data/x.SAFE:WV_001``. The path can be a local path or a fsspec
+        URL of a remote SAFE (``s3://bucket/x.SAFE``, see the *Reading a SAFE from S3* page).
+    backend_kwargs: dict or None
+        ``{"storage_options": {...}}``: fsspec storage options of a remote SAFE (like
+        ``key``, ``secret``, ``client_kwargs={"endpoint_url": ...}`` for ``s3fs``). They
+        are used for the XML files, and translated to GDAL config options for the
+        measurement files. Without them, the settings come from the environment.
+
+    Examples
+    --------
+    >>> reader = Sentinel1Reader("SENTINEL1_DS:/data/x.SAFE:WV_001")  # doctest: +SKIP
+    >>> resolution, ds = reader.load_digital_number(resolution="1000m")  # doctest: +SKIP
+    """
+
     def __init__(self, name, backend_kwargs=None):
         logging.debug("input name: %s", name)
         if not isinstance(name, (str, os.PathLike)):

@@ -148,11 +148,17 @@ DataTree('None', parent=None)
 
 ```
 
-Example of usage for S3: access
+Example of usage for S3 access (needs `s3fs`), here on the Copernicus Data Space Ecosystem:
 
-```pycon
-url = 's3:///eodata/..../.SAFE'
-storage_options = {"anon": False, "client_kwargs": {"endpoint_url": 'https://'+entrypoint_url, 'aws_access_key_id':access_key,
-    'aws_secret_access_key':secret_key}}
-reader = Sentinel1Reader(url,backend_kwargs={"storage_options": storage_options})
+```python
+url = "s3://eodata/Sentinel-1/SAR/WV_SLC__1S/2026/11/16/<product>.SAFE"
+storage_options = {
+    "key": access_key,
+    "secret": secret_key,
+    "client_kwargs": {"endpoint_url": "https://eodata.dataspace.copernicus.eu", "region_name": "default"},
+}
+reader = Sentinel1Reader(url, backend_kwargs={"storage_options": storage_options})
+resolution, ds = reader.load_digital_number(chunks={"line": 1000, "sample": -1})
 ```
+
+See [Reading a SAFE from S3](https://xarray-safe-s1.readthedocs.io/en/latest/remote.html) (options, performance).
