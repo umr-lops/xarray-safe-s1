@@ -144,7 +144,10 @@ class Sentinel1Reader:
         if not isinstance(name, (str, os.PathLike)):
             raise ValueError(f"cannot deal with object of type {type(name)}: {name}")
         self.path, dsid = split_dataset_name(name)
-        """Dataset path: local path or fsspec URL (like 's3://bucket/x.SAFE'), without trailing slash"""
+        """Dataset path (local path or fsspec URL), without trailing slash.
+
+        For example ``/data/x.SAFE`` or ``s3://bucket/x.SAFE``.
+        """
         self.name = f"SENTINEL1_DS:{self.path}:{dsid}"
         """Gdal dataset name"""
         self.short_name = f"SENTINEL1_DS:{os.path.basename(self.path)}:{dsid}"
