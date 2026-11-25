@@ -11,7 +11,6 @@ logger = logging.getLogger("xsar.xml_parser")
 logger.addHandler(logging.NullHandler())
 
 
-# TODO: no variable caching is not while  https://github.com/dask/distributed/issues/5610 is not solved
 class XmlParser:
     """
     Parameters
@@ -33,22 +32,45 @@ class XmlParser:
     namespaces: dict
         xml namespaces, passed to lxml.xpath.
         namespaces are mutualised between all handled xml files.
+    cache: bool
+        If True (default), each xml file is parsed once and its root is kept for the lifetime of
+        the parser (see `clear_cache`). Values of variables are not cached, and the parsed roots
+        are dropped when the parser is pickled (e.g. sent to dask workers).
     """
 
-    def __init__(self, mapper, xpath_mappings={}, compounds_vars={}, namespaces={}):
+    def __init__(
+        self, mapper, xpath_mappings={}, compounds_vars={}, namespaces={}, cache=True
+    ):
         self._namespaces = namespaces
         self._xpath_mappings = xpath_mappings
         self._compounds_vars = compounds_vars
         self._mapper = mapper
+        self._cache = cache
+        self._roots = {}
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state["_roots"] = {}  # parsed xml trees stay local to the process
+        return state
+
+    def clear_cache(self):
+        """Forget the parsed xml roots."""
+        self._roots.clear()
 
     def __del__(self):
         logger.debug("__del__ XmlParser")
 
     def getroot(self, xml_file):
-        """return xml root object from xml_file. (also update self._namespaces with fetched ones)"""
-        raw_data = self._mapper[xml_file]
-        # xml_root = etree.fromstring(raw_data)
-        xml_root = objectify.parse(BytesIO(raw_data)).getroot()
+        """return xml root object from xml_file. (also update self._namespaces with fetched ones)
+
+        The returned root is shared between calls when caching is enabled: do not modify it.
+        """
+        xml_root = self._roots.get(xml_file)
+        if xml_root is None:
+            raw_data = self._mapper[xml_file]
+            xml_root = objectify.parse(BytesIO(raw_data)).getroot()
+            if self._cache:
+                self._roots[xml_file] = xml_root
         self._namespaces.update(xml_root.nsmap)
         return xml_root
 
