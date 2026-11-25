@@ -84,7 +84,6 @@ intersphinx_mapping = {
     "dask": ("https://docs.dask.org/en/latest", None),
     "xarray": ("https://docs.xarray.dev/en/latest/", None),
     "rasterio": ("https://rasterio.readthedocs.io/en/latest/", None),
-    "datatree": ("https://xarray-datatree.readthedocs.io/en/latest/", None),
 }
 
 html_theme_options = {
