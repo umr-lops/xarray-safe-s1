@@ -36,6 +36,7 @@ options for the measurement files:
 s3fs storage option                                      GDAL config option
 ======================================================== ===========================================================
 ``key``, ``secret``, ``token``                           ``AWS_ACCESS_KEY_ID``, ``AWS_SECRET_ACCESS_KEY``, ``AWS_SESSION_TOKEN``
+``client_kwargs["aws_access_key_id"]``...                same as ``key``...
 ``anon=True``                                            ``AWS_NO_SIGN_REQUEST=YES``
 ``endpoint_url`` or ``client_kwargs["endpoint_url"]``    ``AWS_S3_ENDPOINT``, ``AWS_HTTPS``, ``AWS_VIRTUAL_HOSTING=FALSE``
 ``client_kwargs["region_name"]``                         ``AWS_REGION``

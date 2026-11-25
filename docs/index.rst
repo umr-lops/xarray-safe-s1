@@ -12,10 +12,12 @@ Documentation
 Overview
 ........
 
-    **safe_s1** rely on `xarray.open_rasterio` and `rasterio` to read *digital_number* from SAFE
-    product to return an xarray.datatree.
+    **safe_s1** reads Sentinel-1 SAFE products: metadata and luts are decoded from the xml
+    files following `ESA Sentinel-1 Product Specification`_, and the *digital_number* are read
+    from the measurement files with `rasterio`_ (GDAL), lazily with `dask`_ or resampled.
 
-    Luts are decoded from xml files following `ESA Sentinel-1 Product Specification`_.
+    The SAFE can be local, or remote on an S3-compatible object storage like the Copernicus
+    Data Space Ecosystem: see :doc:`remote`.
 
 
     `safe_s1.metadata.Sentinel1reader` is the main class and contains a xarray.datatree with the useful data. In the following example, you will find some additional functions and properties that can be useful.
@@ -33,6 +35,7 @@ Examples
 
 * :doc:`examples/simple_tutorial`
 * :doc:`examples/resampled_read`
+* :doc:`remote`
 
 
 Reference
