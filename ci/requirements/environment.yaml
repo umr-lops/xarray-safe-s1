@@ -17,12 +17,18 @@ dependencies:
   - pytest-cov
   - hypothesis
   - coverage
+  # remote SAFE tests (fake S3 server)
+  - moto
+  - flask
+  - flask-cors
+  - boto3
   # I/O
   - rioxarray
   - h5netcdf
   - zarr
   - scipy
   - rasterio
+  - s3fs
   # data
   - xarray
   - xarray-datatree
