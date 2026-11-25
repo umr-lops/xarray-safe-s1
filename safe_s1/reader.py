@@ -508,7 +508,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        xr.DataTree
+        xarray.DataTree
             Contains data from the reader
         """
         return self.dt
@@ -960,7 +960,7 @@ class Sentinel1Reader:
 
         Returns
         -------
-        pandas.core.frame.DataFrame
+        pandas.DataFrame
             Columns:
                 * index         : file number, extracted from the filename.
                 * dsid          : dataset id, compatible with gdal sentinel1 driver ('SENTINEL1_DS:/path/file.SAFE:WV_012')
