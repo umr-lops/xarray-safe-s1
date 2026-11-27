@@ -167,3 +167,11 @@ def test_1000m_can_be_written_three_ways(reader, at_1000m, resolution):
     np.testing.assert_array_equal(
         ds.valid_pixel_fraction, expected.valid_pixel_fraction
     )
+
+
+def test_history_names_relative_to_the_safe(at_1000m):
+    """The history gives the measurement files relative to the SAFE, with "/" on all OS."""
+    history = at_1000m[1].digital_number.attrs["history"]
+    assert history.startswith("digital_number: measurement/s1a-iw-grd-v")
+    assert "\\" not in history
+    assert ".SAFE" not in history

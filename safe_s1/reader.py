@@ -358,12 +358,15 @@ class Sentinel1Reader:
         else:
             comment = "read at full resolution"
 
-        # Add root to path
-        files_measurement = self.files["measurement"].copy()
+        # Add root to path. The names are relative to the SAFE, with the OS
+        # separator (os.path.normpath): "/" for a URL and for the history.
+        names = [f.replace(os.sep, "/") for f in self.files["measurement"]]
         if remote.is_remote(self.path):
-            files_measurement = [f"{self.path}/{f}" for f in files_measurement]
+            files_measurement = [f"{self.path}/{f}" for f in names]
         else:
-            files_measurement = [os.path.join(self.path, f) for f in files_measurement]
+            files_measurement = [
+                os.path.join(self.path, f) for f in self.files["measurement"]
+            ]
         # paths for GDAL: /vsis3/... for a remote SAFE
         gdal_files = [remote.gdal_path(f) for f in files_measurement]
 
@@ -479,13 +482,7 @@ class Sentinel1Reader:
 
         dn.attrs = {
             "comment": "%s digital number, %s" % (descr, comment),
-            "history": yaml.safe_dump(
-                {
-                    var_name: get_glob(
-                        [p.replace(self.path + "/", "") for p in files_measurement]
-                    )
-                }
-            ),
+            "history": yaml.safe_dump({var_name: get_glob(names)}),
         }
         ds = dn.to_dataset(name=var_name)
         astype = _dtypes.get(var_name)
